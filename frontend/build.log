@@ -1,0 +1,6 @@
+﻿src/app/api/auth/[...nextauth]/route.ts(169,9): error TS2322: Type '({ token, user }: { token: JWT; user: User | AdapterUser; account: Account | null; profile?: Profile | undefined; trigger?: "update" | "signIn" | "signUp" | undefined; isNewUser?: boolean | undefined; session?: any; }) => JWT | { ...; }' is not assignable to type '(params: { token: JWT; user: User | AdapterUser; account: Account | null; profile?: Profile | undefined; trigger?: "update" | "signIn" | "signUp" | undefined; isNewUser?: boolean | undefined; session?: any; }) => Awaitable<...>'.
+  Type 'JWT | { id: string; role: string; staffRole: string; permissions: string[]; name?: string | null | undefined; email?: string | null | undefined; picture?: string | null | undefined; sub?: string | undefined; }' is not assignable to type 'Awaitable<JWT>'.
+    Type '{ id: string; role: string; staffRole: string; permissions: string[]; name?: string | null; email?: string | null; picture?: string | null; sub?: string; }' is not assignable to type 'Awaitable<JWT>'.
+      Type '{ id: string; role: string; staffRole: string; permissions: string[]; name?: string | null; email?: string | null; picture?: string | null; sub?: string; }' is not assignable to type 'JWT'.
+        Types of property 'role' are incompatible.
+          Type 'string' is not assignable to type 'Role'.
