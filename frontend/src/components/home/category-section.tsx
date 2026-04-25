@@ -51,7 +51,7 @@ export function CategorySection({ products }: { products: Product[] }) {
   const displayedCategories = currentLevel ? currentLevel.subCategories! : categories;
 
   return (
-    <section className="py-3 md:py-7 bg- min-h-[600px]">
+    <section className="py-1 md:py-1 bg- min-h-[600px]">
       <div className="container">
         <motion.div initial="hidden" whileInView="visible" variants={fadeUp} viewport={{ once: true }} className="text-center mb-10 md:mb-14">
           <div className="flex items-center justify-center gap-4 mb-4 h-8">
@@ -62,7 +62,7 @@ export function CategorySection({ products }: { products: Product[] }) {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -10 }}
                   onClick={handleBack}
-                  className="flex items-center gap-1.5 text-sm font-bold text-[#1877F2] hover:text-[#0d47a1] transition-colors bg-blue-50 px-4 py-1.5 rounded-full border border-blue-100 shadow-sm"
+                  className="flex items-center gap-1.5 text-sm font-bold text-[#1877F2] hover:text-[#0d47a1] transition-colors bg-blue-50 px-4 py-1 rounded-full border border-blue-100 shadow-sm"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   Back {path.length > 1 ? "to " + path[path.length - 2].name : "to Categories"}
@@ -112,7 +112,7 @@ export function CategorySection({ products }: { products: Product[] }) {
                         className="object-cover transition-transform duration-700 group-hover:scale-110"
                       />
                     </div>
-                    <div className="p-4 flex items-center justify-between bg-white group-hover:bg-gray-50 transition-colors">
+                    <div className="p-2 flex items-center justify-between bg-white group-hover:bg-gray-50 transition-colors">
                       <div className="flex-1 pr-2">
                         <h3 className="font-bold text-sm md:text-base text-gray-900 leading-tight">
                           {category.name}

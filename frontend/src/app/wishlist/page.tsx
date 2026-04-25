@@ -44,9 +44,11 @@ export default function WishlistPage() {
 
     useEffect(() => {
         let mounted = true;
-        if (mounted) {
-            void fetchWishlist();
-        }
+        (async () => {
+            if (mounted) {
+                await fetchWishlist();
+            }
+        })();
         return () => { mounted = false; };
     }, [fetchWishlist]);
 

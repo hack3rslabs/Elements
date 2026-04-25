@@ -47,7 +47,15 @@ async function getCart(userId: string | null, sessionId: string) {
     });
 }
 
-function calculateTotals(items: any[]) {
+interface CartItemWithProduct {
+    quantity: number;
+    product: {
+        price: unknown;
+        mrp: unknown;
+    };
+}
+
+function calculateTotals(items: CartItemWithProduct[]) {
     let subtotal = 0;
     let mrpTotal = 0;
     let itemCount = 0;
@@ -86,9 +94,10 @@ export async function GET(req: Request) {
             success: true,
             data: calculateTotals(cart.items)
         });
-    } catch (e: any) {
-        console.error("Cart GET error:", e);
-        return NextResponse.json({ success: false, message: e.message }, { status: 500 });
+    } catch (e: unknown) {
+        const error = e as Error;
+        console.error("Cart error:", error);
+        return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
 }
 

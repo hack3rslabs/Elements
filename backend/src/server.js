@@ -12,7 +12,7 @@ const fs = require('fs');
 require('dotenv').config();
 
 const prisma = new PrismaClient();
-const { sendOtpSms } = require('./utils/twilio');
+const { sendOtp } = require('./utils/otp_delivery');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -380,8 +380,8 @@ app.post('/api/auth/otp/send', authLimiter, async (req, res) => {
             create: { phone, otp, expiresAt }
         });
 
-        // Send SMS via Twilio
-        await sendOtpSms(phone, otp);
+        // Send via unified utility (Msg91/Twilio/Simulation)
+        await sendOtp(phone, otp);
 
         res.json({ success: true, message: 'OTP sent successfully' });
     } catch (error) {
@@ -395,30 +395,58 @@ app.post('/api/auth/otp/verify', authLimiter, async (req, res) => {
     if (!phone || !otp) return res.status(400).json({ success: false, message: 'Phone and OTP are required' });
 
     try {
-        const record = await prisma.verificationOTP.findUnique({
+        // 1. Check for Test OTP (123456) in development
+        const isTestOtp = (otp === '123456' && process.env.NODE_ENV === 'development');
+        
+        if (!isTestOtp) {
+            const record = await prisma.verificationOTP.findUnique({
+                where: { phone }
+            });
+
+            if (!record || record.otp !== otp || record.expiresAt < new Date()) {
+                return res.status(401).json({ success: false, message: 'Invalid or expired OTP' });
+            }
+
+            // OTP is valid, remove it
+            await prisma.verificationOTP.delete({ where: { phone } });
+        }
+        
+        // 2. Find or create user
+        // We first try to find by phone
+        let user = await prisma.user.findFirst({
             where: { phone }
         });
 
-        if (!record || record.otp !== otp || record.expiresAt < new Date()) {
-            return res.status(401).json({ success: false, message: 'Invalid or expired OTP' });
+        if (!user) {
+            // Try fallback to email format if it exists
+            user = await prisma.user.findUnique({
+                where: { email: phone + '@elements.com' }
+            });
         }
 
-        // OTP is valid, remove it
-        await prisma.verificationOTP.delete({ where: { phone } });
+        if (!user) {
+            // Create new user
+            user = await prisma.user.create({
+                data: {
+                    name: 'User ' + phone.slice(-4),
+                    email: phone + '@elements.com',
+                    phone: phone,
+                    role: 'USER'
+                }
+            });
+        }
         
-        // Find or create user
-        const user = await prisma.user.upsert({
-            where: { email: phone + '@elements.com' }, // Fallback email
-            update: { phone, name: 'User ' + phone.slice(-4) },
-            create: {
-                name: 'User ' + phone.slice(-4),
-                email: phone + '@elements.com',
-                phone: phone,
-                role: 'USER'
+        res.json({ 
+            success: true, 
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                role: user.role,
+                permissions: user.permissions || []
             }
         });
-        
-        res.json({ success: true, user });
     } catch (error) {
         console.error('[AUTH] OTP Verify Error:', error);
         res.status(500).json({ success: false, message: 'Verification failed', error: error.message });
@@ -1618,60 +1646,7 @@ app.post('/api/auth/staff/login', (req, res) => {
     res.json({ success: true, user: safeUser });
 });
 
-// OTP send route (for staff or customer login)
-app.post('/api/auth/otp/send', (req, res) => {
-    const { email, phone } = req.body;
-    if (!email && !phone) return res.status(400).json({ success: false, message: 'Email or phone is required' });
 
-    // In a real app, generate OTP, save it with an expiry, and send via email/SMS
-    // For this mock API, we'll just simulate success
-    console.log(`[AUTH] OTP requested for ${email || phone}`);
-    res.json({ success: true, message: 'OTP sent successfully (simulated)' });
-});
-
-// OTP verify route
-app.post('/api/auth/otp/verify', (req, res) => {
-    const { phone, otp } = req.body;
-    if (!phone || !otp) return res.status(400).json({ success: false, message: 'Phone and OTP are required' });
-
-    // Mock verification: 123456 is always valid for testing
-    if (otp === '123456') {
-        // Find existing customer or staff by phone
-        let user = staffUsers.find(u => u.phone === phone);
-        if (!user) {
-            // Check customers (derived or stored)
-            // For now, let's look in the converted customers array
-            user = customers.find(c => c.phone === phone);
-        }
-
-        // If still no user, create a dummy customer for testing flow
-        if (!user) {
-            user = {
-                id: `user-${uuidv4().slice(0, 8)}`,
-                name: 'New Customer',
-                phone: phone,
-                role: 'CUSTOMER',
-                status: 'active'
-            };
-        }
-
-        const roleMap = { admin: 'ADMIN', sub_admin: 'ADMIN', staff: 'STAFF', tele_caller: 'STAFF', product_uploader: 'STAFF', CUSTOMER: 'CUSTOMER' };
-
-        return res.json({
-            success: true,
-            user: {
-                id: user.id || user.email,
-                name: user.name,
-                email: user.email || '',
-                phone: user.phone,
-                role: roleMap[user.role] || 'CUSTOMER',
-                permissions: user.permissions || []
-            }
-        });
-    }
-
-    res.status(401).json({ success: false, message: 'Invalid OTP' });
-});
 app.post('/api/webhooks/meta', (req, res) => {
     const { leadgen_id, form_id, field_data, created_time, ad_name } = req.body;
     // Parse Meta lead gen format
@@ -2393,13 +2368,25 @@ async function startServer() {
     }
 
     // 3. Start HTTP server
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
         console.log(`\n  🚀 Elements Backend API Server v3.0 running at:`);
         console.log(`  → Local:        http://localhost:${PORT}`);
         console.log(`  → Products API: GET  http://localhost:${PORT}/api/products`);
         console.log(`  → Create Prod:  POST http://localhost:${PORT}/api/products`);
         console.log(`  → Admin Panel:  http://localhost:${PORT}/api/admin/stats`);
         console.log(`  → Staff Login:  POST http://localhost:${PORT}/api/auth/staff/login\n`);
+    });
+
+    server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.error(`\n  ❌ ERROR: Port ${PORT} is already in use.`);
+            console.error(`  → Another instance of the server is likely running.`);
+            console.error(`  → Try killing the process or use a different port: PORT=5001 npm run dev\n`);
+            process.exit(1);
+        } else {
+            console.error('\n  ❌ Server error:', err.message);
+            process.exit(1);
+        }
     });
 }
 

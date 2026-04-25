@@ -50,45 +50,46 @@ export const CATEGORIES: Category[] = [
     ]
   },
   { 
-    name: "INSULATION FOILS & COLDPLY", 
+    name: "ALUMINIUM INSULATION FOILS  ", 
     image: "/images/products/aluminium insulation.avif", 
     slug: "aluminium-insulation", 
     desc: "Mitti magic terracotta panels",
     subCategories: [
-      { name: "Insulation foils", slug: "foils", image: "/images/products/aluminium insulation.avif" },
-      { name: "Tank Covers", slug: "covers", image: "/images/products/aluminium insulation.avif" },
+      { name: "ALUMINIUM BUBBLE INSULATION", slug: "foils", image: "/images/products/aluminium insulation.avif" },
+      { name: " ALUMINIUM TANK COVERS", slug: "covers", image: "/images/products/aluminium insulation.avif" },
     ]
   },
   { 
-    name: "MANHOLE COVERS", 
+    name: " FRP MANHOLE COVERS", 
     image: "/images/products/mc.png", 
     slug: "manhole-covers", 
     desc: "Durable and aesthetic covers",
     subCategories: [
-      { name: "Comercial Metrocover", slug: "comercial", image: "/images/products/mc.png" },
-      { name: "Domestic Truecover", slug: "domestic", image: "/images/products/mc.png" },
+      { name: "  FRP MANHOLE COVERS", slug: "FRP", image: "/images/products/mc.png" },
+      { name: "SS INLAY", slug: "ssinlay", image: "/images/products/mc.png" },
+      { name: "FRP INLAY", slug: "frpinlay", image: "/images/products/mc.png" },
     ]
   },
   { name: "TERRACOTA PRODUCTS", image: "/images/products/tp.webp", slug: "terracota-products", desc: "Designer printed & vitrified tiles",
   subCategories: [
-    { name: "Clay Jali & Breeze Blocks", slug: "jali", image: "/images/products/tp.webp" },
-    { name: "Roof tiles", slug: "roof-tiles", image: "/images/products/tp.webp" },
-     { name: "Clading Bricks", slug: "cladding", image: "/images/products/tp.webp" },
+    { name: "TERRACOTA CLAY JALI", slug: "jali", image: "/images/products/tp.webp" },
+    { name: "TERRACOTA ROOF TILES", slug: "roof-tiles", image: "/images/products/tp.webp" },
+     { name: "TERRACOTA CLADING BRICKS", slug: "cladding", image: "/images/products/tp.webp" },
   ]
  },
 
-  { name: "TILE ADHESIVE & EPOXY", image: "/images/products/mason house.avif", slug: "tile-adhesive-epoxy", desc: "Designer printed & vitrified tiles", 
+  { name: "MASON HOUSE", image: "/images/products/mason house.avif", slug: "tile-adhesive-epoxy", desc: "Designer printed & vitrified tiles", 
   subCategories: [
-    { name: "Tile Adhesive", slug: "tile-adhesive", image: "/images/products/tp.webp" },
-    { name: "Tile Epoxy", slug: "tile-epoxy", image: "/images/products/tp.webp" },
-    { name: "Tiling Tools", slug: "tile-tools", image: "/images/products/tp.webp" },
+    { name: "TILE ADHESIVE", slug: "tile-adhesive", image: "/images/products/tp.webp" },
+    { name: "TILE EPOXY", slug: "tile-epoxy", image: "/images/products/tp.webp" },
+    { name: "TILING TOOLS", slug: "tile-tools", image: "/images/products/tp.webp" },
   ]},
   
   { name: "PVD PRODUCTS & SHINEX", image: "/images/products/pvd.webp", slug: "pvd-profiles-sheets", desc: "Designer printed & vitrified tiles", 
     subCategories: [
-      { name: "PVD Furniture", slug: "pvd-furniture", image: "/images/products/tp.webp" },
-      { name: "PVD Sheets", slug: "pvd-sheets", image: "/images/products/tp.webp" },
-      { name: "PVD Profiles", slug: "pvd-profile", image: "/images/products/tp.webp" },
+      { name: "PVD FURNITURE", slug: "pvd-furniture", image: "/images/products/tp.webp" },
+      { name: "PVD SHEETS", slug: "pvd-sheets", image: "/images/products/tp.webp" },
+      { name: "PVD PROFILES", slug: "pvd-profile", image: "/images/products/tp.webp" },
     ]
   },
   { name: "FLOOR PROTECTION", image: "/images/products/fp.webp", slug: "floor-protection", desc: "Designer printed & vitrified tiles" },

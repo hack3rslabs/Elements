@@ -5,3 +5,4 @@
 # OS config
 .DS_Store
 Thumbs.db
+.env

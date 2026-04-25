@@ -12,8 +12,8 @@ interface Facets {
 
 interface FilterSidebarProps {
     facets: Facets | null;
-    activeFilters: Record<string, any>;
-    onFilterChange: (filters: Record<string, any>) => void;
+    activeFilters: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    onFilterChange: (filters: Record<string, any>) => void; // eslint-disable-line @typescript-eslint/no-explicit-any
     onClearAll: () => void;
 }
 
@@ -41,7 +41,7 @@ export function FilterSidebar({ facets, activeFilters, onFilterChange, onClearAl
     const toggleFacet = (type: 'material' | 'finish', value: string) => {
         const current = Array.isArray(activeFilters[type]) ? activeFilters[type] : activeFilters[type] ? [activeFilters[type]] : [];
         const next = current.includes(value) 
-            ? current.filter((v: string) => v !== value) 
+            ? current.filter((v: any) => v !== value) // eslint-disable-line @typescript-eslint/no-explicit-any
             : [...current, value];
         onFilterChange({ ...activeFilters, [type]: next });
     };
