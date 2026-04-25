@@ -1,47 +1,37 @@
+"use client";
+
 import { Header } from "@/components/layout/header";
 import { ProductCard, Product } from "@/components/product/product-card";
-
-// Mock Data
-const products: Product[] = [
-    {
-        id: "1",
-        name: "Premium Stainless Steel Kitchen Sink - Single Bowl",
-        slug: "stainless-steel-sink-single",
-        category: "Kitchen Sinks",
-        price: 4999,
-        originalPrice: 7999,
-        image: "/images/products/kicjen sunk 1.webp",
-    },
-    {
-        id: "2",
-        name: "Double Bowl Granite Sink - Matte Black",
-        slug: "granite-sink-double-black",
-        category: "Kitchen Sinks",
-        price: 12499,
-        originalPrice: 15999,
-        image: "/images/products/k s 2.jpg",
-    },
-    {
-        id: "3",
-        name: "Ceramic Farmhouse Sink - White",
-        slug: "ceramic-farmhouse-sink",
-        category: "Kitchen Sinks",
-        price: 8999,
-        originalPrice: 10999,
-        image: "/images/products/kicjen sunk 1.webp", // Reuse for demo
-    },
-    {
-        id: "4",
-        name: "Modern Kitchen Faucet with Pull-Down Sprayer",
-        slug: "kitchen-faucet-pull-down",
-        category: "Accessories",
-        price: 3499,
-        originalPrice: 5499,
-        image: "/images/products/k s 2.jpg", // Reuse for demo
-    },
-];
+import { useEffect, useState } from "react";
 
 export default function KitchenPage() {
+    const [products, setProducts] = useState<Product[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        setLoading(true);
+        fetch("http://localhost:5000/api/products?category=kitchen&limit=50")
+            .then(r => r.json())
+            .then(d => {
+                if (d?.success) {
+                    const mapped: Product[] = (d.data || []).map((p: any) => ({
+                        id: String(p.id),
+                        name: String(p.name),
+                        slug: String(p.slug),
+                        category: String(p.categoryName || "Kitchen"),
+                        price: Number(p.price) || 0,
+                        originalPrice: p.mrp ? Number(p.mrp) : undefined,
+                        image: String(p.image || (Array.isArray(p.images) ? p.images[0] : "") || "/images/products/kicjen sunk 1.webp"),
+                        rating: typeof p.rating === "number" ? p.rating : undefined,
+                        reviews: typeof p.reviewCount === "number" ? p.reviewCount : undefined,
+                    }));
+                    setProducts(mapped);
+                }
+                setLoading(false);
+            })
+            .catch(() => setLoading(false));
+    }, []);
+
     return (
         <div className="flex min-h-screen flex-col">
             <Header />
@@ -62,11 +52,15 @@ export default function KitchenPage() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {products.map((product) => (
-                            <ProductCard key={product.id} product={product} />
-                        ))}
-                    </div>
+                    {loading ? (
+                        <p className="text-sm text-muted-foreground">Loading products...</p>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                            {products.map((product) => (
+                                <ProductCard key={product.id} product={product} />
+                            ))}
+                        </div>
+                    )}
                 </div>
             </main>
             <footer className="border-t bg-background py-8 mt-auto">

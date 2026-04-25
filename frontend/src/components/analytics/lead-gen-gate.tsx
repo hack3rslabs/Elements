@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { User, Mail, Phone, Lock, Sparkles, X, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -16,7 +16,7 @@ export function LeadGenGate() {
         // Check if user has already submitted lead
         const hasSubmitted = localStorage.getItem("elements_lead_captured");
         if (hasSubmitted) {
-            setIsSubmitted(true);
+            setTimeout(() => setIsSubmitted(true), 0);
             return;
         }
 
@@ -63,7 +63,7 @@ export function LeadGenGate() {
             } else {
                 alert(data.message || "Please check your details");
             }
-        } catch (err) {
+        } catch {
             alert("Connection error. Please try again.");
         }
         setLoading(false);

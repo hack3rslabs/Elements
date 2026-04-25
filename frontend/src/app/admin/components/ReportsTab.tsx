@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Download, TrendingUp, Users, IndianRupee, ArrowUpRight, ArrowDownRight, Calendar, CreditCard, Banknote, RotateCcw, ShoppingCart, ChevronLeft, ChevronRight, Package, Zap, Target, BarChart3 } from "lucide-react";
+import { Download, TrendingUp, Users, IndianRupee, ArrowUpRight, Calendar, CreditCard, Banknote, ShoppingCart, ChevronLeft, ChevronRight, Package, Zap, Target, BarChart3 } from "lucide-react";
 
 const API = "http://localhost:5000";
 const HDRS = { "Content-Type": "application/json", "x-api-key": "elements-admin-key-2026" };
@@ -62,7 +62,7 @@ export default function ReportsTab() {
         if (!stats) { showToast("Loading data..."); return; }
         let csv = "";
         let tableHTML = "";
-        let rTitle = EXPORT_TYPES.find(x => x.key === type)?.label || 'Report';
+        const rTitle = EXPORT_TYPES.find(x => x.key === type)?.label || 'Report';
 
         switch (type) {
             case "sales":

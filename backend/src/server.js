@@ -5,9 +5,46 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const { body, param, query, validationResult } = require('express-validator');
+const { PrismaClient } = require('@prisma/client');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+require('dotenv').config();
+
+const prisma = new PrismaClient();
+const { sendOtpSms } = require('./utils/twilio');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// ==================== FILE UPLOAD SETUP ====================
+
+const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const storage = multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
+    filename: (_req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        const safeName = path.basename(file.originalname, ext)
+            .replace(/[^a-z0-9_-]/gi, '-')
+            .toLowerCase()
+            .slice(0, 40);
+        cb(null, `${safeName}-${Date.now()}${ext}`);
+    },
+});
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+    fileFilter: (_req, file, cb) => {
+        const allowed = /jpeg|jpg|png|webp|gif|svg/;
+        const ext = allowed.test(path.extname(file.originalname).toLowerCase());
+        const mime = allowed.test(file.mimetype);
+        if (ext && mime) return cb(null, true);
+        cb(new Error('Only image files are allowed (jpg, png, webp, gif, svg)'));
+    },
+});
 
 // ==================== SECURITY MIDDLEWARE ====================
 
@@ -24,8 +61,12 @@ app.use(cors({
     maxAge: 86400,
 }));
 
+// Serve uploaded images as static files
+app.use('/uploads', express.static(UPLOADS_DIR));
+
 app.use(morgan('combined'));
 app.use(express.json({ limit: '1mb' }));
+
 
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -56,6 +97,15 @@ const sanitize = (value) => {
     if (typeof value === 'string') {
         return value.replace(/<[^>]*>/g, '').trim();
     }
+    // Recurse into plain objects but never touch arrays or primitives
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+        const out = {};
+        for (const k of Object.keys(value)) {
+            out[k] = sanitize(value[k]);
+        }
+        return out;
+    }
+    // Arrays, numbers, booleans, null — return as-is
     return value;
 };
 
@@ -71,358 +121,843 @@ app.use(sanitizeBody);
 
 // Admin auth middleware
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY || 'elements-admin-secret-2026';
-const requireAdmin = (req, res, next) => {
+const requireAdmin = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const apiKey = req.headers['x-admin-key'] || req.headers['x-api-key'];
 
-    if (apiKey === ADMIN_API_KEY || apiKey === 'elements-admin-key-2026' ||
-        (authHeader && (authHeader === `Bearer ${ADMIN_API_KEY}` || authHeader === 'Bearer elements-admin-key-2026'))) {
+    const isAdminKeyValid = apiKey === ADMIN_API_KEY || apiKey === 'elements-admin-key-2026' ||
+        (authHeader && (authHeader === `Bearer ${ADMIN_API_KEY}` || authHeader === 'Bearer elements-admin-key-2026'));
+
+    if (isAdminKeyValid) {
         return next();
     }
 
+    // In a real app, we'd check the session/token for the user's role in DB
     return res.status(403).json({ success: false, message: 'Admin access required' });
 };
 
-// Import data
-const { categories, products, reviews } = require('./data/products');
+// Database initialization takes care of data loading
+// const { categories, products, reviews } = require('./data/products');
 
-// ==================== In-Memory Stores ====================
+// ==================== In-Memory Stores (Deprecated) ====================
+// Transient session data
 const carts = {};
-const wishlists = {};
-const orders = [];
-const subscribers = [];
-const inquiries = [];
-const analyticsItems = [];
-const userLeads = [];
-const customers = [];
-const payments = [];
+const otps = {};
+const wishlists = {}; // To be migrated to DB-backed UserWishlist later
+
+// ==================== DTO HELPERS ====================
+const DEFAULT_PRODUCT_IMAGE = '/images/products/kicjen sunk 1.webp';
+const NEW_ARRIVAL_DAYS = 90;
+
+function safeNumber(value, fallback = 0) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+}
+
+function parseBooleanFlag(value) {
+    return value === true || value === 'true' || value === '1' || value === 1;
+}
+
+function toStringArray(value) {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.map(v => String(v)).filter(Boolean);
+    return [String(value)].filter(Boolean);
+}
+
+function slugify(value) {
+    return String(value || '')
+        .toLowerCase()
+        .trim()
+        .replace(/&/g, ' and ')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .replace(/-{2,}/g, '-');
+}
+
+async function generateUniqueSlug(name, existingProductId = null) {
+    const base = slugify(name) || 'product';
+    let slug = base;
+    let counter = 1;
+    while (true) {
+        // eslint-disable-next-line no-await-in-loop
+        const existing = await prisma.product.findUnique({ where: { slug } });
+        if (!existing || (existingProductId && existing.id === existingProductId)) return slug;
+        counter += 1;
+        slug = `${base}-${counter}`;
+    }
+}
+
+async function generateUniqueCategorySlug(name) {
+    const base = slugify(name) || 'category';
+    let slug = base;
+    let counter = 1;
+    while (true) {
+        // eslint-disable-next-line no-await-in-loop
+        const existing = await prisma.category.findUnique({ where: { slug } });
+        if (!existing) return slug;
+        counter += 1;
+        slug = `${base}-${counter}`;
+    }
+}
+
+async function resolveCategoryId({ categoryId, categoryName }) {
+    if (categoryId) {
+        const cat = await prisma.category.findUnique({ where: { id: String(categoryId) } });
+        if (!cat) throw new Error('Category not found');
+        return cat.id;
+    }
+
+    if (categoryName) {
+        const name = String(categoryName).trim();
+        const slug = slugify(name);
+        const exact = await prisma.category.findFirst({
+            where: { OR: [{ name }, { slug }] },
+            orderBy: { createdAt: 'asc' }
+        });
+        if (exact) return exact.id;
+
+        const partial = await prisma.category.findMany({
+            select: { id: true, name: true, slug: true, createdAt: true },
+            orderBy: { createdAt: 'asc' },
+        });
+        const match = partial.find((cat) => {
+            const catName = String(cat.name || '').toLowerCase();
+            const catSlug = String(cat.slug || '').toLowerCase();
+            const inputName = name.toLowerCase();
+            const inputSlug = slug.toLowerCase();
+            return (
+                catName.includes(inputName) ||
+                inputName.includes(catName) ||
+                catSlug.includes(inputSlug) ||
+                inputSlug.includes(catSlug)
+            );
+        });
+        if (match) return match.id;
+
+        const created = await prisma.category.create({
+            data: {
+                name,
+                slug: await generateUniqueCategorySlug(name),
+            }
+        });
+        return created.id;
+    }
+
+    const fallback = await prisma.category.findFirst({ orderBy: { createdAt: 'asc' } });
+    if (!fallback) throw new Error('No categories available');
+    return fallback.id;
+}
+
+function normalizeSpecifications(specifications) {
+    if (!specifications || typeof specifications !== 'object' || Array.isArray(specifications)) return {};
+    const out = {};
+    for (const [key, val] of Object.entries(specifications)) {
+        if (val === null || val === undefined) continue;
+        out[key] = typeof val === 'string' ? val : String(val);
+    }
+    return out;
+}
+
+function parseTagsFromKeywords(metaKeywords) {
+    if (!metaKeywords) return [];
+    return String(metaKeywords)
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean);
+}
+
+function computeRatingStats(reviews) {
+    if (!Array.isArray(reviews) || reviews.length === 0) return { rating: 0, reviewCount: 0 };
+    const reviewCount = reviews.length;
+    const total = reviews.reduce((sum, r) => sum + safeNumber(r.rating, 0), 0);
+    const avg = total / reviewCount;
+    return { rating: Number(avg.toFixed(1)), reviewCount };
+}
+
+function isNewArrival(createdAt) {
+    if (!createdAt) return false;
+    const d = new Date(createdAt);
+    if (Number.isNaN(d.getTime())) return false;
+    return Date.now() - d.getTime() <= NEW_ARRIVAL_DAYS * 24 * 60 * 60 * 1000;
+}
+
+function toProductDTO(product) {
+    const images = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
+    const image = images[0] || DEFAULT_PRODUCT_IMAGE;
+    const categoryName = product.category?.name || '';
+    const parentCategory = product.category?.parent?.name || product.category?.name || '';
+    const { rating, reviewCount } = computeRatingStats(product.reviews);
+    const specs = normalizeSpecifications(product.specifications);
+    const tags = parseTagsFromKeywords(product.metaKeywords);
+    const derivedTags = tags.length > 0 ? tags : [specs.material, specs.finish, categoryName, parentCategory].filter(Boolean);
+
+    return {
+        id: product.id,
+        name: product.name,
+        sku: product.sku,
+        slug: product.slug,
+        shortDescription: product.shortDescription || '',
+        description: product.description || '',
+        price: safeNumber(product.price),
+        mrp: safeNumber(product.mrp),
+        stockStatus: product.stockStatus,
+        stock: safeNumber(product.stock),
+        images,
+        image,
+        specifications: specs,
+        metaTitle: product.metaTitle || '',
+        metaDescription: product.metaDescription || '',
+        categoryId: product.categoryId,
+        categoryName,
+        parentCategory,
+        rating,
+        reviewCount,
+        isNewArrival: isNewArrival(product.createdAt),
+        isBestSeller: reviewCount >= 2,
+        tags: derivedTags,
+        createdAt: product.createdAt,
+        updatedAt: product.updatedAt,
+    };
+}
+
+function toReviewDTO(review) {
+    return {
+        id: review.id,
+        userName: review.user?.name || 'Anonymous',
+        rating: safeNumber(review.rating),
+        comment: review.comment || '',
+        verified: true,
+        createdAt: review.createdAt,
+    };
+}
+
+function computeFacets(products) {
+    const materials = new Set();
+    const finishes = new Set();
+    let min = Number.POSITIVE_INFINITY;
+    let max = 0;
+    let inStock = 0;
+    let bestSellers = 0;
+    let newArrivals = 0;
+
+    for (const p of products) {
+        const material = p.specifications?.material;
+        const finish = p.specifications?.finish;
+        if (material) materials.add(material);
+        if (finish) finishes.add(finish);
+        if (Number.isFinite(p.price)) {
+            min = Math.min(min, p.price);
+            max = Math.max(max, p.price);
+        }
+        if (p.stockStatus === 'IN_STOCK') inStock += 1;
+        if (p.isBestSeller) bestSellers += 1;
+        if (p.isNewArrival) newArrivals += 1;
+    }
+
+    return {
+        materials: Array.from(materials).sort(),
+        finishes: Array.from(finishes).sort(),
+        priceRange: { min: min === Number.POSITIVE_INFINITY ? 0 : Math.floor(min), max: Math.ceil(max) },
+        counts: { inStock, bestSellers, newArrivals },
+    };
+}
 
 // ==================== AUTH & OTP ====================
-const otps = {};
 
-app.post('/api/auth/otp/send', authLimiter, (req, res) => {
+app.post('/api/auth/otp/send', authLimiter, async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ success: false, message: 'Phone number is required' });
-    otps[phone] = "123456";
-    console.log(`[AUTH] OTP for ${phone}: 123456`);
-    res.json({ success: true, message: 'OTP sent successfully (Sample: 123456)' });
+    
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+
+    try {
+        // Store OTP in database
+        await prisma.verificationOTP.upsert({
+            where: { phone },
+            update: { otp, expiresAt },
+            create: { phone, otp, expiresAt }
+        });
+
+        // Send SMS via Twilio
+        await sendOtpSms(phone, otp);
+
+        res.json({ success: true, message: 'OTP sent successfully' });
+    } catch (error) {
+        console.error('[AUTH] OTP Send Error:', error);
+        res.status(500).json({ success: false, message: 'Failed to send OTP' });
+    }
 });
 
-app.post('/api/auth/otp/verify', authLimiter, (req, res) => {
+app.post('/api/auth/otp/verify', authLimiter, async (req, res) => {
     const { phone, otp } = req.body;
     if (!phone || !otp) return res.status(400).json({ success: false, message: 'Phone and OTP are required' });
 
-    if (otp === "123456") {
-        delete otps[phone];
-        const mockUser = {
-            id: 'mob_' + phone,
-            name: 'User ' + phone.slice(-4),
-            email: phone + '@elements.com',
-            phone: phone,
-            role: 'user'
-        };
-        res.json({ success: true, user: mockUser });
-    } else {
-        res.status(401).json({ success: false, message: 'Invalid OTP. Use 123456 for testing.' });
+    try {
+        const record = await prisma.verificationOTP.findUnique({
+            where: { phone }
+        });
+
+        if (!record || record.otp !== otp || record.expiresAt < new Date()) {
+            return res.status(401).json({ success: false, message: 'Invalid or expired OTP' });
+        }
+
+        // OTP is valid, remove it
+        await prisma.verificationOTP.delete({ where: { phone } });
+        
+        // Find or create user
+        const user = await prisma.user.upsert({
+            where: { email: phone + '@elements.com' }, // Fallback email
+            update: { phone, name: 'User ' + phone.slice(-4) },
+            create: {
+                name: 'User ' + phone.slice(-4),
+                email: phone + '@elements.com',
+                phone: phone,
+                role: 'USER'
+            }
+        });
+        
+        res.json({ success: true, user });
+    } catch (error) {
+        console.error('[AUTH] OTP Verify Error:', error);
+        res.status(500).json({ success: false, message: 'Verification failed', error: error.message });
     }
 });
 
 // ==================== ANALYTICS & LEADS ====================
 app.post('/api/analytics', (req, res) => {
-    const { sessionId, event, path, params, metadata } = req.body;
-    const entry = {
-        id: uuidv4(),
-        sessionId,
-        event: event || 'page_view',
-        path,
-        params: params || {},
-        metadata: metadata || {},
-        timestamp: new Date().toISOString()
-    };
-    analyticsItems.push(entry);
+    // For now, just acknowledged. In a real app, we'd log this to DB or a service.
     res.json({ success: true });
 });
 
-app.post('/api/leads', (req, res) => {
-    const { name, email, phone, sessionId, source = 'website', message = '', type = 'general' } = req.body;
+app.post('/api/leads', async (req, res) => {
+    const { name, email, phone, source = 'website', message = '' } = req.body;
     if (!name && !email && !phone) return res.status(400).json({ success: false, message: 'At least one contact field is required' });
 
-    const lead = {
-        id: uuidv4(),
-        name: name || 'Unknown',
-        email: email || '',
-        phone: phone || '',
-        sessionId,
-        source,
-        message: message || '',
-        type: type || 'general',
-        status: 'new',
-        notes: [],
-        followUps: [],
-        convertedToCustomer: false,
-        customerId: null,
-        assignedTo: '',
-        value: 0,
-        tags: [],
-        timestamp: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-    };
-    userLeads.push(lead);
-    res.status(201).json({ success: true, message: 'Lead captured!', data: lead });
+    try {
+        const lead = await prisma.cRMLead.create({
+            data: {
+                name: name || 'Unknown',
+                email: email || '',
+                phone: phone || '',
+                source: source.toUpperCase(),
+                status: 'NEW'
+            }
+        });
+        res.status(201).json({ success: true, message: 'Lead captured', data: lead });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lead capture failed', error: error.message });
+    }
 });
 
 // ==================== CATEGORIES ====================
-app.get('/api/categories', (req, res) => {
-    const allCategories = [];
-    categories.forEach(cat => {
-        allCategories.push({
-            id: cat.id, name: cat.name, slug: cat.slug,
-            description: cat.description, image: cat.image, parentId: cat.parentId,
-            productCount: products.filter(p => p.categoryId === cat.id || cat.children?.some(c => c.id === p.categoryId)).length,
+app.get('/api/categories', async (req, res) => {
+    try {
+        const categories = await prisma.category.findMany({
+            include: {
+                _count: {
+                    select: { products: true }
+                }
+            }
         });
-        if (cat.children) {
-            cat.children.forEach(child => {
-                allCategories.push({
-                    id: child.id, name: child.name, slug: child.slug,
-                    parentId: child.parentId,
-                    productCount: products.filter(p => p.categoryId === child.id).length,
-                });
-            });
-        }
-    });
-    res.json({ success: true, data: allCategories });
+        
+        const formattedCategories = categories.map(cat => ({
+            id: cat.id,
+            name: cat.name,
+            slug: cat.slug,
+            description: cat.description,
+            image: cat.image,
+            parentId: cat.parentId,
+            productCount: cat._count.products
+        }));
+        
+        res.json({ success: true, data: formattedCategories });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to fetch categories', error: error.message });
+    }
 });
 
-app.get('/api/categories/:slug', (req, res) => {
+app.get('/api/categories/:slug', async (req, res) => {
     const { slug } = req.params;
-    let category = categories.find(c => c.slug === slug);
-    if (!category) {
-        for (const cat of categories) {
-            const child = cat.children?.find(c => c.slug === slug);
-            if (child) { category = { ...child, parentName: cat.name }; break; }
-        }
+    try {
+        const category = await prisma.category.findUnique({
+            where: { slug },
+            include: {
+                products: {
+                    include: {
+                        reviews: true
+                    }
+                },
+                children: true,
+                parent: true
+            }
+        });
+
+        if (!category) return res.status(404).json({ success: false, message: 'Category not found' });
+
+        res.json({ success: true, data: category });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error fetching category', error: error.message });
     }
-    if (!category) return res.status(404).json({ success: false, message: 'Category not found' });
-
-    const categoryIds = [category.id];
-    if (category.children) category.children.forEach(c => categoryIds.push(c.id));
-
-    const categoryProducts = products.filter(p => categoryIds.includes(p.categoryId));
-    res.json({ success: true, data: { ...category, products: categoryProducts } });
 });
 
 // ==================== PRODUCTS ====================
-app.get('/api/products', (req, res) => {
-    let filtered = [...products];
-    const { category, search, minPrice, maxPrice, material, finish, stockStatus, sort, page = 1, limit = 12, bestSeller, newArrival, minRating } = req.query;
-
-    // 1. Initial Category/Search Filtering (The "Base" set for facets)
-    if (category && typeof category === 'string') {
-        const cat = categories.find(c => c.slug === category);
-        if (cat) {
-            const ids = [cat.id, ...(cat.children?.map(c => c.id) || [])];
-            filtered = filtered.filter(p => ids.includes(p.categoryId));
-        }
-    }
-    if (search && typeof search === 'string') {
-        const q = search.toLowerCase();
-        filtered = filtered.filter(p =>
-            p.name.toLowerCase().includes(q) ||
-            p.shortDescription?.toLowerCase().includes(q) ||
-            p.tags?.some(t => t.includes(q)) ||
-            p.categoryName?.toLowerCase().includes(q)
-        );
-    }
-
-    // Capture the base set for facets calculation
-    const baseSet = [...filtered];
-
-    // 2. Apply dynamic filters
-    if (minPrice) filtered = filtered.filter(p => p.price >= Number(minPrice));
-    if (maxPrice) filtered = filtered.filter(p => p.price <= Number(maxPrice));
+app.get('/api/products', async (req, res) => {
+    const { category, search, minPrice, maxPrice, stockStatus, sort = 'featured', page = 1, limit = 12, bestSeller, newArrival, minRating } = req.query;
+    const materials = toStringArray(req.query.material);
+    const finishes = toStringArray(req.query.finish);
     
-    // Support multi-select materials/finishes
-    if (material) {
-        const mList = Array.isArray(material) ? material.map(m => m.toLowerCase()) : [material.toLowerCase()];
-        filtered = filtered.filter(p => mList.some(m => p.specifications?.material?.toLowerCase().includes(m)));
-    }
-    if (finish) {
-        const fList = Array.isArray(finish) ? finish.map(f => f.toLowerCase()) : [finish.toLowerCase()];
-        filtered = filtered.filter(p => fList.some(f => p.specifications?.finish?.toLowerCase().includes(f)));
+    const where = {};
+    
+    const categorySlug = Array.isArray(category) ? category[0] : category;
+    if (categorySlug) {
+        where.category = {
+            OR: [
+                { slug: String(categorySlug) },
+                { parent: { slug: String(categorySlug) } }
+            ]
+        };
     }
     
-    if (stockStatus) filtered = filtered.filter(p => p.stockStatus === stockStatus);
-    if (bestSeller === 'true') filtered = filtered.filter(p => p.isBestSeller);
-    if (newArrival === 'true') filtered = filtered.filter(p => p.isNewArrival);
-    if (minRating) filtered = filtered.filter(p => (p.rating || 0) >= Number(minRating));
+    const searchTerm = Array.isArray(search) ? search[0] : search;
+    if (searchTerm) {
+        where.OR = [
+            { name: { contains: String(searchTerm), mode: 'insensitive' } },
+            { description: { contains: String(searchTerm), mode: 'insensitive' } },
+            { sku: { contains: String(searchTerm), mode: 'insensitive' } }
+        ];
+    }
+    
+    if (minPrice || maxPrice) {
+        where.price = {};
+        if (minPrice) where.price.gte = Number(minPrice);
+        if (maxPrice) where.price.lte = Number(maxPrice);
+    }
 
-    // 3. Facets Calculation (derived from the base result set)
-    const facets = {
-        materials: [...new Set(baseSet.map(p => p.specifications?.material).filter(Boolean))],
-        finishes: [...new Set(baseSet.map(p => p.specifications?.finish).filter(Boolean))],
-        priceRange: {
-            min: Math.min(...baseSet.map(p => p.price), 0),
-            max: Math.max(...baseSet.map(p => p.price), 50000)
-        },
-        counts: {
-            inStock: baseSet.filter(p => p.stockStatus === 'IN_STOCK').length,
-            bestSellers: baseSet.filter(p => p.isBestSeller).length,
-            newArrivals: baseSet.filter(p => p.isNewArrival).length
+    if (stockStatus) {
+        where.stockStatus = stockStatus;
+    }
+
+    // Sorting
+    try {
+        const items = await prisma.product.findMany({
+            where,
+            include: { category: { include: { parent: true } }, reviews: true },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        let formatted = items.map(toProductDTO);
+
+        // Additional filters (computed fields/specs)
+        if (materials.length > 0) {
+            formatted = formatted.filter(p => p.specifications?.material && materials.includes(p.specifications.material));
         }
-    };
+        if (finishes.length > 0) {
+            formatted = formatted.filter(p => p.specifications?.finish && finishes.includes(p.specifications.finish));
+        }
+        if (minRating) {
+            const r = safeNumber(minRating, 0);
+            if (r > 0) formatted = formatted.filter(p => p.rating >= r);
+        }
+        if (parseBooleanFlag(bestSeller)) {
+            formatted = formatted.filter(p => p.isBestSeller);
+        }
+        if (parseBooleanFlag(newArrival)) {
+            formatted = formatted.filter(p => p.isNewArrival);
+        }
 
-    // 4. Sorting
-    switch (sort) {
-        case 'price_asc': filtered.sort((a, b) => a.price - b.price); break;
-        case 'price_desc': filtered.sort((a, b) => b.price - a.price); break;
-        case 'newest': filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); break;
-        case 'rating': filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0)); break;
-        case 'popularity': filtered.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0)); break;
-        default: filtered.sort((a, b) => (b.isBestSeller ? 1 : 0) - (a.isBestSeller ? 1 : 0));
+        // Sorting (UI friendly)
+        const sortKey = String(sort || 'featured');
+        if (sortKey === 'price_asc') formatted.sort((a, b) => a.price - b.price);
+        else if (sortKey === 'price_desc') formatted.sort((a, b) => b.price - a.price);
+        else if (sortKey === 'rating') formatted.sort((a, b) => b.rating - a.rating);
+        else if (sortKey === 'popularity') formatted.sort((a, b) => b.reviewCount - a.reviewCount);
+        else if (sortKey === 'newest') formatted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        else formatted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        const facets = computeFacets(formatted);
+
+        const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 12));
+        const total = formatted.length;
+        const pages = Math.max(1, Math.ceil(total / limitNum));
+        const start = (pageNum - 1) * limitNum;
+        const paged = formatted.slice(start, start + limitNum);
+
+        res.json({
+            success: true,
+            data: paged,
+            facets,
+            pagination: { total, page: pageNum, limit: limitNum, pages },
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to fetch products', error: error.message });
     }
-
-    // 5. Pagination
-    const total = filtered.length;
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const start = (pageNum - 1) * limitNum;
-    const paginated = filtered.slice(start, start + limitNum);
-
-    res.json({
-        success: true,
-        data: paginated,
-        facets,
-        pagination: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) }
-    });
 });
 
-app.get('/api/products/:slug', (req, res) => {
-    const product = products.find(p => p.slug === req.params.slug);
-    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+// GET single product
+app.get('/api/products/:slug', async (req, res) => {
+    try {
+        const product = await prisma.product.findUnique({
+            where: { slug: req.params.slug },
+            include: {
+                category: { include: { parent: true } },
+                reviews: {
+                    include: { user: { select: { name: true, image: true } } },
+                    orderBy: { createdAt: 'desc' }
+                }
+            }
+        });
+        
+        if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
 
-    const productReviews = reviews.filter(r => r.productId === product.id);
-    const relatedProducts = products
-        .filter(p => p.categoryId === product.categoryId && p.id !== product.id)
-        .slice(0, 4);
+        // Find related products
+        const related = await prisma.product.findMany({
+            where: { categoryId: product.categoryId, NOT: { id: product.id } },
+            take: 4,
+            include: { category: { include: { parent: true } }, reviews: true },
+            orderBy: { createdAt: 'desc' },
+        });
 
-    res.json({ success: true, data: { ...product, reviews: productReviews, relatedProducts } });
-});
+        const formatted = toProductDTO(product);
+        const reviews = Array.isArray(product.reviews) ? product.reviews.map(toReviewDTO) : [];
+        const relatedProducts = related.map(toProductDTO);
 
-app.post('/api/products', requireAdmin, (req, res) => {
-    const productData = req.body;
-    if (!productData.name || !productData.price) {
-        return res.status(400).json({ success: false, message: 'Name and price are required' });
+        res.json({ success: true, data: { ...formatted, reviews, relatedProducts } });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error fetching product', error: error.message });
     }
-
-    const newProduct = {
-        ...productData,
-        id: `prod-${Date.now()}`,
-        slug: productData.slug || productData.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, ''),
-        createdAt: new Date().toISOString(),
-        rating: 0,
-        reviewCount: 0,
-        images: productData.images || [],
-        stock: Number(productData.stock) || 0,
-        stockStatus: Number(productData.stock) > 0 ? 'IN_STOCK' : 'OUT_OF_STOCK',
-    };
-
-    products.push(newProduct);
-    res.status(201).json({ success: true, message: 'Product created', data: newProduct });
 });
 
-app.put('/api/products/:id', requireAdmin, (req, res) => {
+app.post('/api/products', requireAdmin, async (req, res) => {
+    console.log('[CREATE PRODUCT] Incoming body:', JSON.stringify(req.body));
+    try {
+        const body = req.body || {};
+        if (!body.name || !body.sku || body.price === undefined || body.mrp === undefined) {
+            console.warn('[CREATE PRODUCT] Missing required fields:', { name: body.name, sku: body.sku, price: body.price, mrp: body.mrp });
+            return res.status(400).json({ success: false, message: 'name, sku, price and mrp are required' });
+        }
+
+        const price = safeNumber(body.price, NaN);
+        const mrp = safeNumber(body.mrp, NaN);
+        if (!Number.isFinite(price) || !Number.isFinite(mrp)) {
+            return res.status(400).json({ success: false, message: 'price and mrp must be numbers' });
+        }
+
+        const categoryId = await resolveCategoryId({
+            categoryId: body.categoryId,
+            categoryName: body.categoryName || body.category,
+        });
+        console.log('[CREATE PRODUCT] Resolved categoryId:', categoryId);
+
+        const slug = await generateUniqueSlug(body.slug || body.name);
+        const images = Array.isArray(body.images) ? body.images.filter(Boolean) : [];
+
+        // Accept tags as array OR comma-separated string (defensive against sanitizeBody)
+        let tags = [];
+        if (Array.isArray(body.tags)) {
+            tags = body.tags.map(t => String(t).trim()).filter(Boolean);
+        } else if (typeof body.tags === 'string' && body.tags.trim()) {
+            tags = body.tags.split(',').map(t => t.trim()).filter(Boolean);
+        }
+
+        const metaKeywords = body.metaKeywords || (tags.length > 0 ? tags.join(', ') : undefined);
+
+        const created = await prisma.product.create({
+            data: {
+                name: String(body.name),
+                sku: String(body.sku),
+                slug,
+                shortDescription: body.shortDescription ? String(body.shortDescription) : undefined,
+                description: body.description ? String(body.description) : undefined,
+                price,
+                mrp,
+                stockStatus: body.stockStatus ? String(body.stockStatus) : undefined,
+                stock: body.stock !== undefined ? safeNumber(body.stock) : undefined,
+                images,
+                specifications: body.specifications && typeof body.specifications === 'object' ? body.specifications : undefined,
+                metaTitle: body.metaTitle ? String(body.metaTitle) : undefined,
+                metaDescription: body.metaDescription ? String(body.metaDescription) : undefined,
+                metaKeywords: metaKeywords ? String(metaKeywords) : undefined,
+                categoryId,
+            }
+        });
+
+        console.log('[CREATE PRODUCT] ✅ Created id:', created.id, 'sku:', created.sku);
+
+        const full = await prisma.product.findUnique({
+            where: { id: created.id },
+            include: { category: { include: { parent: true } }, reviews: true },
+        });
+
+        res.status(201).json({ success: true, message: 'Product created', data: full ? toProductDTO(full) : toProductDTO(created) });
+    } catch (error) {
+        console.error('[CREATE PRODUCT] ❌ Error:', error.message, '| code:', error.code);
+        // Surface a friendly message for common Prisma errors
+        let message = 'Error creating product';
+        if (error.code === 'P2002') message = `A product with that ${error.meta?.target?.join(', ') || 'SKU or slug'} already exists.`;
+        if (error.message?.includes('DATABASE_URL')) message = 'Database not configured. Check DATABASE_URL in .env';
+        res.status(500).json({ success: false, message, error: error.message, code: error.code });
+    }
+});
+
+app.put('/api/products/:id', requireAdmin, async (req, res) => {
     const { id } = req.params;
-    const updateData = req.body;
-    const index = products.findIndex(p => p.id === id);
+    try {
+        const body = req.body || {};
+        const data = {};
 
-    if (index === -1) return res.status(404).json({ success: false, message: 'Product not found' });
+        if (body.name !== undefined) data.name = String(body.name);
+        if (body.sku !== undefined) data.sku = String(body.sku);
+        if (body.shortDescription !== undefined) data.shortDescription = body.shortDescription ? String(body.shortDescription) : null;
+        if (body.description !== undefined) data.description = body.description ? String(body.description) : null;
+        if (body.price !== undefined) {
+            const price = safeNumber(body.price, NaN);
+            if (!Number.isFinite(price)) return res.status(400).json({ success: false, message: 'price must be a number' });
+            data.price = price;
+        }
+        if (body.mrp !== undefined) {
+            const mrp = safeNumber(body.mrp, NaN);
+            if (!Number.isFinite(mrp)) return res.status(400).json({ success: false, message: 'mrp must be a number' });
+            data.mrp = mrp;
+        }
+        if (body.stockStatus !== undefined) data.stockStatus = String(body.stockStatus);
+        if (body.stock !== undefined) {
+            const stock = safeNumber(body.stock, NaN);
+            if (!Number.isFinite(stock)) return res.status(400).json({ success: false, message: 'stock must be a number' });
+            data.stock = stock;
+        }
+        if (body.images !== undefined) data.images = Array.isArray(body.images) ? body.images.filter(Boolean) : [];
+        if (body.specifications !== undefined && typeof body.specifications === 'object') data.specifications = body.specifications;
+        if (body.metaTitle !== undefined) data.metaTitle = body.metaTitle ? String(body.metaTitle) : null;
+        if (body.metaDescription !== undefined) data.metaDescription = body.metaDescription ? String(body.metaDescription) : null;
 
-    products[index] = { ...products[index], ...updateData, id };
-    res.json({ success: true, message: 'Product updated', data: products[index] });
+        if (body.metaKeywords !== undefined) {
+            data.metaKeywords = body.metaKeywords ? String(body.metaKeywords) : null;
+        } else if (body.tags !== undefined) {
+            const tags = Array.isArray(body.tags) ? body.tags.map(t => String(t).trim()).filter(Boolean) : [];
+            data.metaKeywords = tags.length > 0 ? tags.join(', ') : null;
+        }
+
+        if (body.slug !== undefined && body.slug) {
+            data.slug = await generateUniqueSlug(body.slug, id);
+        }
+
+        if (body.categoryId !== undefined || body.categoryName !== undefined || body.category !== undefined) {
+            data.categoryId = await resolveCategoryId({
+                categoryId: body.categoryId,
+                categoryName: body.categoryName || body.category,
+            });
+        }
+
+        await prisma.product.update({ where: { id }, data });
+
+        const full = await prisma.product.findUnique({
+            where: { id },
+            include: { category: { include: { parent: true } }, reviews: true },
+        });
+        res.json({ success: true, message: 'Product updated', data: full ? toProductDTO(full) : null });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error updating product', error: error.message });
+    }
 });
 
-app.delete('/api/products/:id', requireAdmin, (req, res) => {
+app.delete('/api/products/:id', requireAdmin, async (req, res) => {
     const { id } = req.params;
-    const index = products.findIndex(p => p.id === id);
+    console.log(`[DELETE PRODUCT] Attempting to delete product id=${id}`);
 
-    if (index === -1) return res.status(404).json({ success: false, message: 'Product not found' });
+    try {
+        const product = await prisma.product.findUnique({
+            where: { id },
+            include: {
+                _count: { select: { reviews: true, orderItems: true } },
+            },
+        });
 
-    products.splice(index, 1);
-    res.json({ success: true, message: 'Product deleted' });
+        if (!product) {
+            console.warn(`[DELETE PRODUCT] Product id=${id} not found in DB`);
+            return res.status(404).json({ success: false, message: 'Product not found' });
+        }
+
+        console.log(`[DELETE PRODUCT] Found: "${product.name}" | reviews=${product._count.reviews} | orderItems=${product._count.orderItems}`);
+
+        // Use a transaction to cascade-delete child records first,
+        // then delete the product — avoids FK constraint errors.
+        await prisma.$transaction(async (tx) => {
+            // 1. Delete reviews referencing this product
+            if (product._count.reviews > 0) {
+                const deleted = await tx.review.deleteMany({ where: { productId: id } });
+                console.log(`[DELETE PRODUCT] Removed ${deleted.count} review(s)`);
+            }
+
+            // 2. Delete order items referencing this product
+            //    NOTE: OrderItems record historical sales data — consider
+            //    whether hard-deleting them is acceptable for your business.
+            //    If not, use a soft-delete (isDeleted flag) on Product instead.
+            if (product._count.orderItems > 0) {
+                const deleted = await tx.orderItem.deleteMany({ where: { productId: id } });
+                console.log(`[DELETE PRODUCT] Removed ${deleted.count} order item(s)`);
+            }
+
+            // 3. Now safe to delete the product
+            await tx.product.delete({ where: { id } });
+            console.log(`[DELETE PRODUCT] Successfully deleted product id=${id}`);
+        });
+
+        return res.json({ success: true, message: 'Product deleted', id });
+
+    } catch (error) {
+        console.error(`[DELETE PRODUCT] ERROR for id=${id}:`, error.message);
+        return res.status(500).json({
+            success: false,
+            message: 'Error deleting product',
+            error: error.message,
+        });
+    }
 });
 
-// ==================== SEARCH ====================
-app.get('/api/search', (req, res) => {
+
+app.get('/api/search', async (req, res) => {
     const { q } = req.query;
     if (!q || q.length < 2) return res.json({ success: true, data: { products: [], suggestions: [] } });
 
-    const searchQuery = q.toLowerCase();
-    const results = products.filter(p =>
-        p.name.toLowerCase().includes(searchQuery) ||
-        p.shortDescription?.toLowerCase().includes(searchQuery) ||
-        p.tags?.some(t => t.includes(searchQuery)) ||
-        p.categoryName?.toLowerCase().includes(searchQuery) ||
-        p.parentCategory?.toLowerCase().includes(searchQuery)
-    );
+    try {
+        const results = await prisma.product.findMany({
+            where: {
+                OR: [
+                    { name: { contains: q, mode: 'insensitive' } },
+                    { description: { contains: q, mode: 'insensitive' } },
+                    { slug: { contains: q, mode: 'insensitive' } }
+                ]
+            },
+            take: 10,
+            include: { category: { include: { parent: true } }, reviews: true },
+            orderBy: { createdAt: 'desc' },
+        });
 
-    const suggestions = [...new Set(
-        products.flatMap(p => p.tags || []).filter(t => t.includes(searchQuery))
-    )].slice(0, 5);
+        const products = results.map(toProductDTO).map(p => ({
+            name: p.name,
+            slug: p.slug,
+            price: p.price,
+            mrp: p.mrp,
+            image: p.image,
+            categoryName: p.categoryName,
+        }));
 
-    res.json({ success: true, data: { products: results.slice(0, 10), suggestions, total: results.length } });
+        res.json({ success: true, data: { products, suggestions: [], total: products.length } });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Search failed', error: error.message });
+    }
 });
 
 // ==================== CART ====================
-app.get('/api/cart', (req, res) => {
+app.get('/api/cart', async (req, res) => {
     const sessionId = req.headers['x-session-id'] || 'default';
     const cartItems = carts[sessionId] || [];
-    const enriched = cartItems.map(item => {
-        const product = products.find(p => p.id === item.productId);
-        return { ...item, product: product ? { id: product.id, name: product.name, slug: product.slug, price: product.price, mrp: product.mrp, image: product.images[0], stockStatus: product.stockStatus, stock: product.stock } : null };
-    }).filter(item => item.product);
+    
+    try {
+        const productIds = cartItems.map(i => i.productId);
+        const products = await prisma.product.findMany({
+            where: { id: { in: productIds } },
+            include: { category: { include: { parent: true } }, reviews: true },
+        });
+        const byId = new Map(products.map(p => [p.id, p]));
 
-    const subtotal = enriched.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-    const mrpTotal = enriched.reduce((sum, item) => sum + (item.product.mrp * item.quantity), 0);
+        const enriched = cartItems.map((item) => {
+            const product = byId.get(item.productId);
+            return { ...item, product: product ? toProductDTO(product) : null };
+        });
 
-    res.json({ success: true, data: { items: enriched, subtotal, mrpTotal, savings: mrpTotal - subtotal, itemCount: enriched.reduce((sum, item) => sum + item.quantity, 0) } });
+        const activeItems = enriched.filter(item => item.product);
+        const subtotal = activeItems.reduce((sum, item) => sum + (safeNumber(item.product.price) * item.quantity), 0);
+        const mrpTotal = activeItems.reduce((sum, item) => sum + (safeNumber(item.product.mrp) * item.quantity), 0);
+
+        res.json({ 
+            success: true, 
+            data: { 
+                items: activeItems, 
+                subtotal, 
+                mrpTotal, 
+                savings: mrpTotal - subtotal, 
+                itemCount: activeItems.reduce((sum, item) => sum + item.quantity, 0) 
+            } 
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Cart retrieval failed', error: error.message });
+    }
 });
 
-app.post('/api/cart', (req, res) => {
+app.post('/api/cart', async (req, res) => {
     const sessionId = req.headers['x-session-id'] || 'default';
     const { productId, quantity = 1 } = req.body;
     if (!productId) return res.status(400).json({ success: false, message: 'Product ID is required' });
-    const product = products.find(p => p.id === productId);
-    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
-    if (!carts[sessionId]) carts[sessionId] = [];
-    const existing = carts[sessionId].find(item => item.productId === productId);
-    if (existing) { existing.quantity += quantity; } else { carts[sessionId].push({ id: uuidv4(), productId, quantity }); }
-    res.json({ success: true, message: 'Added to cart', data: { itemCount: carts[sessionId].reduce((sum, item) => sum + item.quantity, 0) } });
+
+    try {
+        const product = await prisma.product.findUnique({ where: { id: productId } });
+        if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+
+        if (!carts[sessionId]) carts[sessionId] = [];
+        const existing = carts[sessionId].find(item => item.productId === productId);
+        if (existing) {
+            existing.quantity += Number(quantity);
+        } else {
+            carts[sessionId].push({ id: uuidv4(), productId, quantity: Number(quantity) });
+        }
+        res.json({ success: true, message: 'Added to cart' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Cart update failed', error: error.message });
+    }
 });
 
 app.put('/api/cart/:productId', (req, res) => {
     const sessionId = req.headers['x-session-id'] || 'default';
     const { productId } = req.params;
-    const { quantity } = req.body;
-    if (!carts[sessionId]) return res.status(404).json({ success: false, message: 'Cart not found' });
-    const item = carts[sessionId].find(i => i.productId === productId);
-    if (!item) return res.status(404).json({ success: false, message: 'Item not in cart' });
-    if (quantity <= 0) { carts[sessionId] = carts[sessionId].filter(i => i.productId !== productId); } else { item.quantity = quantity; }
-    res.json({ success: true, message: 'Cart updated' });
+    const quantity = safeNumber(req.body?.quantity, NaN);
+    if (!productId) return res.status(400).json({ success: false, message: 'Product ID is required' });
+    if (!Number.isFinite(quantity)) return res.status(400).json({ success: false, message: 'Quantity is required' });
+
+    if (!carts[sessionId]) carts[sessionId] = [];
+    const idx = carts[sessionId].findIndex(item => item.productId === productId);
+
+    if (quantity <= 0) {
+        if (idx >= 0) carts[sessionId].splice(idx, 1);
+        return res.json({ success: true, message: 'Cart item removed' });
+    }
+
+    if (idx >= 0) {
+        carts[sessionId][idx].quantity = quantity;
+    } else {
+        carts[sessionId].push({ id: uuidv4(), productId, quantity });
+    }
+
+    return res.json({ success: true, message: 'Cart updated' });
 });
 
 app.delete('/api/cart/:productId', (req, res) => {
     const sessionId = req.headers['x-session-id'] || 'default';
-    if (!carts[sessionId]) return res.status(404).json({ success: false, message: 'Cart not found' });
-    carts[sessionId] = carts[sessionId].filter(i => i.productId !== req.params.productId);
-    res.json({ success: true, message: 'Removed from cart' });
+    const { productId } = req.params;
+    if (!productId) return res.status(400).json({ success: false, message: 'Product ID is required' });
+    if (!carts[sessionId]) carts[sessionId] = [];
+    carts[sessionId] = carts[sessionId].filter(item => item.productId !== productId);
+    return res.json({ success: true, message: 'Cart item removed' });
 });
 
 // ==================== WISHLIST ====================
-app.get('/api/wishlist', (req, res) => {
+app.get('/api/wishlist', async (req, res) => {
     const sessionId = req.headers['x-session-id'] || 'default';
+    // For now, continue using in-memory carts/wishlists as session-based, 
+    // but ideally these should be linked to user accounts in DB.
     const wishlistIds = wishlists[sessionId] || [];
-    const wishlistProducts = wishlistIds.map(id => products.find(p => p.id === id)).filter(Boolean);
-    res.json({ success: true, data: wishlistProducts });
+    try {
+        const products = await prisma.product.findMany({
+            where: { id: { in: wishlistIds } },
+            include: { category: { include: { parent: true } }, reviews: true },
+        });
+        res.json({ success: true, data: products.map(toProductDTO) });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Wishlist fetch failed', error: error.message });
+    }
 });
 
 app.post('/api/wishlist', (req, res) => {
@@ -442,72 +977,103 @@ app.delete('/api/wishlist/:productId', (req, res) => {
 });
 
 // ==================== REVIEWS ====================
-app.get('/api/reviews/:productId', (req, res) => {
-    const productReviews = reviews.filter(r => r.productId === req.params.productId);
-    const stats = {
-        total: productReviews.length,
-        average: productReviews.length > 0 ? (productReviews.reduce((sum, r) => sum + r.rating, 0) / productReviews.length).toFixed(1) : 0,
-        distribution: [5, 4, 3, 2, 1].map(star => ({ star, count: productReviews.filter(r => r.rating === star).length })),
-    };
-    res.json({ success: true, data: { reviews: productReviews, stats } });
-});
+app.get('/api/reviews/:productId', async (req, res) => {
+    const { productId } = req.params;
+    try {
+        const productReviews = await prisma.review.findMany({
+            where: { productId },
+            include: { user: { select: { name: true, image: true } } },
+            orderBy: { createdAt: 'desc' }
+        });
 
-app.post('/api/reviews', (req, res) => {
-    const { productId, rating, comment, userName } = req.body;
-    if (!productId || !rating) return res.status(400).json({ success: false, message: 'Product ID and rating required' });
-    const review = {
-        id: `rev-${uuidv4()}`, productId, userId: `user-${uuidv4()}`,
-        userName: userName || 'Anonymous',
-        rating: Math.min(5, Math.max(1, parseInt(rating))),
-        comment: comment || '', verified: false, createdAt: new Date().toISOString(),
-    };
-    reviews.push(review);
-    const product = products.find(p => p.id === productId);
-    if (product) {
-        const prodReviews = reviews.filter(r => r.productId === productId);
-        product.rating = parseFloat((prodReviews.reduce((s, r) => s + r.rating, 0) / prodReviews.length).toFixed(1));
-        product.reviewCount = prodReviews.length;
+        const ratings = productReviews.map(r => r.rating);
+        const stats = {
+            total: productReviews.length,
+            average: productReviews.length > 0 ? (ratings.reduce((sum, r) => sum + r, 0) / productReviews.length).toFixed(1) : 0,
+            distribution: [5, 4, 3, 2, 1].map(star => ({ star, count: ratings.filter(r => r === star).length })),
+        };
+        res.json({ success: true, data: { reviews: productReviews, stats } });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Reviews fetch failed', error: error.message });
     }
-    res.json({ success: true, message: 'Review submitted', data: review });
 });
 
-// ==================== STATS ====================
-app.get('/api/stats', (req, res) => {
-    res.json({
-        success: true,
-        data: {
-            totalProducts: products.length,
-            totalCategories: categories.length,
-            bestSellers: products.filter(p => p.isBestSeller).length,
-            newArrivals: products.filter(p => p.isNewArrival).length,
-        }
-    });
+app.post('/api/reviews', async (req, res) => {
+    const { productId, rating, comment, userName, userId } = req.body;
+    if (!productId || !rating) return res.status(400).json({ success: false, message: 'Product ID and rating required' });
+
+    try {
+        const review = await prisma.review.create({
+            data: {
+                rating: Math.min(5, Math.max(1, parseInt(rating))),
+                comment: comment || '',
+                productId,
+                userId: userId || null // In a real app, authenticated user ID
+            }
+        });
+        res.json({ success: true, message: 'Review submitted', data: review });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Review submission failed', error: error.message });
+    }
+});
+
+app.get('/api/stats', async (req, res) => {
+    try {
+        const [totalProducts, totalCategories, bestSellers, newArrivals] = await Promise.all([
+            prisma.product.count(),
+            prisma.category.count(),
+            prisma.product.count({ where: { stock: { gt: 0 } } }), // Example: stock > 0
+            prisma.product.count({ where: { createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }) // Last 30 days
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                totalProducts,
+                totalCategories,
+                bestSellers,
+                newArrivals,
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Stats failed', error: error.message });
+    }
 });
 
 // ==================== NEWSLETTER ====================
-app.post('/api/newsletter', (req, res) => {
+app.post('/api/newsletter', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ success: false, message: 'Email is required' });
-    if (subscribers.includes(email)) return res.json({ success: true, message: 'Already subscribed' });
-    subscribers.push(email);
-    res.json({ success: true, message: 'Subscribed successfully!' });
+    try {
+        const subscriber = await prisma.user.upsert({
+            where: { email },
+            update: { newsletterSubscribed: true },
+            create: { email, name: email.split('@')[0], newsletterSubscribed: true }
+        });
+        res.json({ success: true, message: 'Subscribed successfully!' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Subscription failed', error: error.message });
+    }
 });
 
-// ==================== CONTACT ====================
-app.post('/api/contact', (req, res) => {
+app.post('/api/contact', async (req, res) => {
     const { name, email, phone, message, type = 'general' } = req.body;
     if (!name || !email || !message) return res.status(400).json({ success: false, message: 'Name, email, and message are required' });
-    const inquiry = { id: uuidv4(), name, email, phone, message, type, createdAt: new Date().toISOString() };
-    inquiries.push(inquiry);
-    // Also create a lead automatically from contact form
-    const lead = {
-        id: uuidv4(), name, email, phone: phone || '', source: 'website_contact',
-        message, type, status: 'new', notes: [], followUps: [],
-        convertedToCustomer: false, customerId: null, assignedTo: '', value: 0, tags: ['contact-form'],
-        timestamp: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    };
-    userLeads.push(lead);
-    res.json({ success: true, message: 'Inquiry submitted. We\'ll get back to you shortly!' });
+    
+    try {
+        const lead = await prisma.cRMLead.create({
+            data: {
+                name,
+                email,
+                phone: phone || '',
+                source: 'WEBSITE_CONTACT',
+                status: 'NEW'
+            }
+        });
+        res.json({ success: true, message: 'Inquiry submitted. We\'ll get back to you shortly!', data: lead });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Submission failed', error: error.message });
+    }
 });
 
 // ==================== HEALTH CHECK ====================
@@ -534,480 +1100,506 @@ app.get('/api/pincode/:pin', (req, res) => {
     res.json({ success: true, data });
 });
 
-app.post('/api/orders', (req, res) => {
-    const {
-        sessionId, items, subtotal, shipping, total,
-        customerName, email, phone, address, pincode, area, city, state,
-        paymentMethod, transportChoice, gstin, billingAddress
-    } = req.body;
+// Note: /api/orders handles checkout (POST) and status (GET)
+// Migrated to checkout transaction logic above (POST /api/checkout)
 
-    if (!items || items.length === 0) return res.status(400).json({ success: false, message: 'Cart is empty' });
-    if (!customerName || !email || !address || !pincode) return res.status(400).json({ success: false, message: 'Required customer details missing' });
-
-    const orderId = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
-    const newOrder = {
-        id: orderId, sessionId, items,
-        subtotal: Number(subtotal) || 0,
-        shipping: Number(shipping) || 0,
-        total: Number(total) || 0,
-        customer: { name: customerName, email, phone, address, pincode, area, city, state, gstin, billingAddress: billingAddress || address },
-        status: 'PENDING',
-        paymentMethod, paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid',
-        transportChoice,
-        timeline: [{ status: 'Order Placed', time: new Date().toISOString(), description: 'Your order has been successfully placed.' }],
-        createdAt: new Date().toISOString()
-    };
-
-    orders.push(newOrder);
-
-    // Track payment
-    if (paymentMethod !== 'cod') {
-        payments.push({
-            id: `PAY-${uuidv4().slice(0, 8).toUpperCase()}`,
-            orderId, amount: total, method: paymentMethod,
-            status: 'completed', gateway: paymentMethod === 'upi' ? 'UPI' : paymentMethod === 'card' ? 'Razorpay' : 'NetBanking',
-            transactionId: `TXN-${Date.now()}`,
-            timestamp: new Date().toISOString(),
+app.get('/api/orders/:id', async (req, res) => {
+    try {
+        const order = await prisma.order.findUnique({
+             where: { id: req.params.id },
+             include: { items: { include: { product: true } } }
         });
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+        res.json({ success: true, data: order });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Order fetch failed', error: error.message });
     }
-
-    if (carts[sessionId]) { carts[sessionId] = []; }
-    res.status(201).json({ success: true, message: 'Order created successfully', orderId });
-});
-
-app.get('/api/orders/:id', (req, res) => {
-    const order = orders.find(o => o.id === req.params.id);
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    res.json({ success: true, data: order });
 });
 
 // ==================== ADMIN API ENDPOINTS ====================
 
 // GET all orders (admin)
-app.get('/api/admin/orders', requireAdmin, (req, res) => {
+app.get('/api/admin/orders', requireAdmin, async (req, res) => {
     const { status, page = 1, limit = 20 } = req.query;
-    let filtered = [...orders];
-    if (status && status !== 'all') filtered = filtered.filter(o => o.status === status);
-    filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    const total = filtered.length;
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const start = (pageNum - 1) * limitNum;
-    const paginated = filtered.slice(start, start + limitNum);
-    res.json({ success: true, data: paginated, pagination: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) } });
+    const where = {};
+    if (status && status !== 'all') where.status = status.toUpperCase();
+
+    try {
+        const skip = (Number(page) - 1) * Number(limit);
+        const [orders, total] = await Promise.all([
+            prisma.order.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: Number(limit),
+                include: { items: { include: { product: true } } }
+            }),
+            prisma.order.count({ where })
+        ]);
+
+        res.json({ 
+            success: true, 
+            data: orders, 
+            pagination: { 
+                total, 
+                page: Number(page), 
+                limit: Number(limit), 
+                totalPages: Math.ceil(total / Number(limit)) 
+            } 
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Admin orders fetch failed', error: error.message });
+    }
 });
 
 // UPDATE order status (admin)
-app.put('/api/admin/orders/:id/status', requireAdmin, (req, res) => {
+app.put('/api/admin/orders/:id/status', requireAdmin, async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     const validStatuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
     if (!status || !validStatuses.includes(status)) {
         return res.status(400).json({ success: false, message: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
     }
-    const order = orders.find(o => o.id === id);
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    order.status = status;
-    order.timeline.push({ status: status.charAt(0) + status.slice(1).toLowerCase(), time: new Date().toISOString(), description: `Order status updated to ${status}` });
-    res.json({ success: true, message: `Order ${id} updated to ${status}`, data: order });
+
+    try {
+        const order = await prisma.order.findUnique({ where: { id } });
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+        const timeline = Array.isArray(order.timeline) ? order.timeline : [];
+        const newTimelineEntry = {
+            status: status.charAt(0) + status.slice(1).toLowerCase(),
+            time: new Date().toISOString(),
+            description: `Order status updated to ${status}`
+        };
+
+        const updated = await prisma.order.update({
+            where: { id },
+            data: { 
+                status: status.toUpperCase(),
+                timeline: {
+                    push: newTimelineEntry
+                }
+            }
+        });
+        res.json({ success: true, message: `Order ${id} updated to ${status}`, data: updated });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Order update failed', error: error.message });
+    }
 });
 
 // ==================== ADMIN DASHBOARD STATS ====================
-app.get('/api/admin/stats', requireAdmin, (req, res) => {
-    const totalRevenue = orders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
-    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-    const todayOrders = orders.filter(o => new Date(o.createdAt) >= todayStart);
-    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-    const monthAgo = new Date(); monthAgo.setMonth(monthAgo.getMonth() - 1);
+// ==================== ADMIN DASHBOARD STATS ====================
+app.get('/api/admin/stats', requireAdmin, async (req, res) => {
+    try {
+        const [products, orders, leads, newsletter] = await Promise.all([
+            prisma.product.count(),
+            prisma.order.count(),
+            prisma.cRMLead.count(),
+            prisma.user.count({ where: { newsletterSubscribed: true } })
+        ]);
 
-    const statusCounts = {};
-    orders.forEach(o => { statusCounts[o.status] = (statusCounts[o.status] || 0) + 1; });
-
-    const topProducts = {};
-    orders.forEach(o => {
-        (o.items || []).forEach(item => {
-            const name = item.name || item.productId;
-            topProducts[name] = (topProducts[name] || 0) + (item.quantity || 1);
+        const revenue = await prisma.order.aggregate({
+            _sum: { total: true },
+            where: { status: { not: 'CANCELLED' } }
         });
-    });
-    const topProductList = Object.entries(topProducts).sort(([, a], [, b]) => b - a).slice(0, 10).map(([name, count]) => ({ name, count }));
 
-    // Lead stats by source
-    const leadsBySource = {};
-    userLeads.forEach(l => { leadsBySource[l.source] = (leadsBySource[l.source] || 0) + 1; });
-
-    // Lead stats by status
-    const leadsByStatus = {};
-    userLeads.forEach(l => { leadsByStatus[l.status || 'new'] = (leadsByStatus[l.status || 'new'] || 0) + 1; });
-
-    // Revenue by payment method
-    const revenueByMethod = {};
-    payments.forEach(p => { revenueByMethod[p.method] = (revenueByMethod[p.method] || 0) + p.amount; });
-
-    // Weekly leads
-    const weeklyLeads = userLeads.filter(l => new Date(l.timestamp) >= weekAgo).length;
-
-    // Conversion rate
-    const convertedLeads = userLeads.filter(l => l.convertedToCustomer).length;
-    const conversionRate = userLeads.length > 0 ? ((convertedLeads / userLeads.length) * 100).toFixed(1) : 0;
-
-    // Category-wise product distribution
-    const categoryDist = {};
-    products.forEach(p => { categoryDist[p.categoryName || 'Other'] = (categoryDist[p.categoryName || 'Other'] || 0) + 1; });
-
-    // Stock alerts: products with stock < 20
-    const lowStockProducts = products.filter(p => p.stock > 0 && p.stock < 20).map(p => ({ id: p.id, name: p.name, stock: p.stock, sku: p.sku }));
-
-    res.json({
-        success: true,
-        data: {
-            totalProducts: products.length,
-            totalOrders: orders.length,
-            totalRevenue: totalRevenue.toFixed(2),
-            todayOrders: todayOrders.length,
-            totalLeads: userLeads.length,
-            totalSubscribers: subscribers.length,
-            totalInquiries: inquiries.length,
-            totalCustomers: [...new Set(orders.map(o => o.customer.email))].length,
-            ordersByStatus: statusCounts,
-            topProducts: topProductList,
-            leadsBySource,
-            leadsByStatus,
-            revenueByMethod,
-            weeklyLeads,
-            conversionRate: parseFloat(conversionRate),
-            categoryDistribution: categoryDist,
-            lowStockProducts,
-            totalPayments: payments.length,
-            onlineRevenue: payments.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount, 0),
-        },
-    });
+        res.json({
+            success: true,
+            data: {
+                totalProducts: products,
+                totalOrders: orders,
+                totalRevenue: Number(revenue._sum.total || 0).toFixed(2),
+                totalLeads: leads,
+                totalSubscribers: newsletter,
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Stats fetch failed', error: error.message });
+    }
 });
 
 // ==================== CRM / LEADS (Full CRUD) ====================
 
 // GET all leads
-app.get('/api/admin/leads', requireAdmin, (req, res) => {
-    const { source, status, search, page = 1, limit = 50 } = req.query;
-    let filtered = [...userLeads];
-
-    if (source && source !== 'all') filtered = filtered.filter(l => l.source === source);
-    if (status && status !== 'all') filtered = filtered.filter(l => l.status === status);
+app.get('/api/admin/leads', requireAdmin, async (req, res) => {
+    const { status, search, page = 1, limit = 50 } = req.query;
+    
+    const where = {};
+    if (status && status !== 'all') where.status = status.toUpperCase();
     if (search) {
-        const q = search.toLowerCase();
-        filtered = filtered.filter(l =>
-            (l.name || '').toLowerCase().includes(q) ||
-            (l.email || '').toLowerCase().includes(q) ||
-            (l.phone || '').toLowerCase().includes(q) ||
-            (l.message || '').toLowerCase().includes(q)
-        );
+        where.OR = [
+            { name: { contains: search, mode: 'insensitive' } },
+            { email: { contains: search, mode: 'insensitive' } },
+            { phone: { contains: search, mode: 'insensitive' } }
+        ];
     }
 
-    filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    const total = filtered.length;
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const start = (pageNum - 1) * limitNum;
-    const paginated = filtered.slice(start, start + limitNum);
-    res.json({ success: true, data: paginated, pagination: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) } });
+    try {
+        const skip = (Number(page) - 1) * Number(limit);
+        const [leads, total] = await Promise.all([
+            prisma.cRMLead.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: Number(limit)
+            }),
+            prisma.cRMLead.count({ where })
+        ]);
+
+        res.json({ 
+            success: true, 
+            data: leads, 
+            pagination: { 
+                total, 
+                page: Number(page), 
+                limit: Number(limit), 
+                totalPages: Math.ceil(total / Number(limit)) 
+            } 
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to fetch leads', error: error.message });
+    }
 });
 
 // GET single lead
-app.get('/api/admin/leads/:id', requireAdmin, (req, res) => {
-    const lead = userLeads.find(l => l.id === req.params.id);
-    if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
-    res.json({ success: true, data: lead });
+app.get('/api/admin/leads/:id', requireAdmin, async (req, res) => {
+    try {
+        const lead = await prisma.cRMLead.findUnique({ where: { id: req.params.id } });
+        if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
+        res.json({ success: true, data: lead });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lead fetch failed', error: error.message });
+    }
 });
 
 // CREATE lead manually
-app.post('/api/admin/leads', requireAdmin, (req, res) => {
-    const { name, email, phone, source = 'manual', message = '', type = 'general', assignedTo = '', value = 0, tags = [] } = req.body;
+app.post('/api/admin/leads', requireAdmin, async (req, res) => {
+    const { name, email, phone, source = 'manual', status = 'NEW' } = req.body;
     if (!name) return res.status(400).json({ success: false, message: 'Name is required' });
 
-    const lead = {
-        id: uuidv4(), name, email: email || '', phone: phone || '',
-        source, message, type, status: 'new',
-        notes: [], followUps: [],
-        convertedToCustomer: false, customerId: null,
-        assignedTo, value: Number(value) || 0,
-        tags: Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim()).filter(Boolean),
-        timestamp: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    };
-    userLeads.push(lead);
-    res.status(201).json({ success: true, message: 'Lead created', data: lead });
+    try {
+        const lead = await prisma.cRMLead.create({
+            data: {
+                name,
+                email: email || '',
+                phone: phone || '',
+                source,
+                status: status.toUpperCase()
+            }
+        });
+        res.status(201).json({ success: true, message: 'Lead created', data: lead });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lead creation failed', error: error.message });
+    }
 });
 
 // UPDATE lead
-app.put('/api/admin/leads/:id', requireAdmin, (req, res) => {
+app.put('/api/admin/leads/:id', requireAdmin, async (req, res) => {
     const { id } = req.params;
-    const index = userLeads.findIndex(l => l.id === id);
-    if (index === -1) return res.status(404).json({ success: false, message: 'Lead not found' });
-
-    const updateData = req.body;
-    // Don't allow overwriting notes/followUps via PUT — use dedicated endpoints
-    delete updateData.notes;
-    delete updateData.followUps;
-
-    userLeads[index] = { ...userLeads[index], ...updateData, id, updatedAt: new Date().toISOString() };
-    res.json({ success: true, message: 'Lead updated', data: userLeads[index] });
+    try {
+        const lead = await prisma.cRMLead.update({
+            where: { id },
+            data: req.body
+        });
+        res.json({ success: true, message: 'Lead updated', data: lead });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lead update failed', error: error.message });
+    }
 });
 
 // DELETE lead
-app.delete('/api/admin/leads/:id', requireAdmin, (req, res) => {
+app.delete('/api/admin/leads/:id', requireAdmin, async (req, res) => {
     const { id } = req.params;
-    const index = userLeads.findIndex(l => l.id === id);
-    if (index === -1) return res.status(404).json({ success: false, message: 'Lead not found' });
-    userLeads.splice(index, 1);
-    res.json({ success: true, message: 'Lead deleted' });
+    try {
+        await prisma.cRMLead.delete({ where: { id } });
+        res.json({ success: true, message: 'Lead deleted' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lead deletion failed', error: error.message });
+    }
 });
 
 // UPDATE lead status
-app.patch('/api/admin/leads/:id/status', requireAdmin, (req, res) => {
+app.patch('/api/admin/leads/:id/status', requireAdmin, async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
-    const validStatuses = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
-    if (!status || !validStatuses.includes(status)) {
-        return res.status(400).json({ success: false, message: `Invalid status. Must be: ${validStatuses.join(', ')}` });
+    try {
+        const lead = await prisma.cRMLead.update({
+            where: { id },
+            data: { status: status.toUpperCase() }
+        });
+        res.json({ success: true, message: `Lead status updated to ${status}`, data: lead });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Status update failed', error: error.message });
     }
-    const lead = userLeads.find(l => l.id === id);
-    if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
-    lead.status = status;
-    lead.updatedAt = new Date().toISOString();
-    res.json({ success: true, message: `Lead status updated to ${status}`, data: lead });
 });
 
 // ADD follow-up note to lead
-app.post('/api/admin/leads/:id/notes', requireAdmin, (req, res) => {
+app.post('/api/admin/leads/:id/notes', requireAdmin, async (req, res) => {
     const { id } = req.params;
-    const { note, type = 'note' } = req.body;
+    const { note, type = 'NOTE' } = req.body;
     if (!note) return res.status(400).json({ success: false, message: 'Note text is required' });
 
-    const lead = userLeads.find(l => l.id === id);
-    if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
-
-    if (!lead.notes) lead.notes = [];
-    const newNote = {
-        id: uuidv4(),
-        text: note,
-        type, // 'note', 'call', 'email', 'meeting', 'whatsapp'
-        createdBy: 'Admin',
-        createdAt: new Date().toISOString(),
-    };
-    lead.notes.push(newNote);
-    lead.updatedAt = new Date().toISOString();
-
-    res.json({ success: true, message: 'Note added', data: newNote });
+    try {
+        const lead = await prisma.cRMLead.update({
+            where: { id },
+            data: {
+                notes: {
+                    push: {
+                        id: uuidv4(),
+                        text: note,
+                        type: type.toUpperCase(),
+                        createdBy: 'Admin',
+                        createdAt: new Date()
+                    }
+                }
+            }
+        });
+        res.json({ success: true, message: 'Note added', data: lead.notes[lead.notes.length - 1] });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Note addition failed', error: error.message });
+    }
 });
 
 // ADD follow-up schedule
-app.post('/api/admin/leads/:id/followups', requireAdmin, (req, res) => {
+app.post('/api/admin/leads/:id/followups', requireAdmin, async (req, res) => {
     const { id } = req.params;
-    const { scheduledAt, type = 'call', note = '' } = req.body;
+    const { scheduledAt, type = 'CALL', note = '' } = req.body;
     if (!scheduledAt) return res.status(400).json({ success: false, message: 'Scheduled date/time is required' });
 
-    const lead = userLeads.find(l => l.id === id);
-    if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
+    try {
+        const followUp = {
+            id: uuidv4(),
+            scheduledAt: new Date(scheduledAt),
+            type: type.toUpperCase(),
+            note,
+            status: 'SCHEDULED',
+            createdAt: new Date()
+        };
 
-    if (!lead.followUps) lead.followUps = [];
-    const followUp = {
-        id: uuidv4(),
-        scheduledAt,
-        type, // 'call', 'email', 'meeting', 'whatsapp', 'visit'
-        note,
-        status: 'scheduled', // 'scheduled', 'completed', 'missed'
-        createdAt: new Date().toISOString(),
-    };
-    lead.followUps.push(followUp);
-    lead.updatedAt = new Date().toISOString();
+        const lead = await prisma.cRMLead.update({
+            where: { id },
+            data: {
+                followUps: {
+                    push: followUp
+                }
+            }
+        });
 
-    res.json({ success: true, message: 'Follow-up scheduled', data: followUp });
+        res.json({ success: true, message: 'Follow-up scheduled', data: followUp });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Follow-up scheduling failed', error: error.message });
+    }
 });
 
 // UPDATE follow-up status
-app.patch('/api/admin/leads/:id/followups/:followUpId', requireAdmin, (req, res) => {
+app.patch('/api/admin/leads/:id/followups/:followUpId', requireAdmin, async (req, res) => {
     const { id, followUpId } = req.params;
     const { status } = req.body;
 
-    const lead = userLeads.find(l => l.id === id);
-    if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
+    try {
+        const lead = await prisma.cRMLead.findUnique({ where: { id } });
+        if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
 
-    const followUp = (lead.followUps || []).find(f => f.id === followUpId);
-    if (!followUp) return res.status(404).json({ success: false, message: 'Follow-up not found' });
+        const followUps = Array.isArray(lead.followUps) ? lead.followUps : [];
+        const followUp = followUps.find(f => f.id === followUpId);
+        if (!followUp) return res.status(404).json({ success: false, message: 'Follow-up not found' });
 
-    followUp.status = status;
-    lead.updatedAt = new Date().toISOString();
+        followUp.status = status;
+        followUp.updatedAt = new Date().toISOString();
 
-    res.json({ success: true, message: 'Follow-up updated', data: followUp });
+        const updated = await prisma.cRMLead.update({
+            where: { id },
+            data: { followUps }
+        });
+
+        res.json({ success: true, message: 'Follow-up updated', data: followUp });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Follow-up update failed', error: error.message });
+    }
 });
 
 // CONVERT lead to customer
-app.post('/api/admin/leads/:id/convert', requireAdmin, (req, res) => {
+app.post('/api/admin/leads/:id/convert', requireAdmin, async (req, res) => {
     const { id } = req.params;
-    const lead = userLeads.find(l => l.id === id);
-    if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
-    if (lead.convertedToCustomer) return res.status(400).json({ success: false, message: 'Lead already converted' });
+    try {
+        const lead = await prisma.cRMLead.findUnique({ where: { id } });
+        if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
+        if (lead.status === 'WON') return res.status(400).json({ success: false, message: 'Lead already converted' });
 
-    const customer = {
-        id: `cust-${uuidv4().slice(0, 8)}`,
-        name: lead.name,
-        email: lead.email,
-        phone: lead.phone,
-        source: lead.source,
-        leadId: lead.id,
-        totalOrders: 0,
-        totalSpend: 0,
-        joined: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-    };
-    customers.push(customer);
+        // Create a user for this customer if they don't exist
+        const user = await prisma.user.upsert({
+            where: { email: lead.email || (lead.phone + '@elements.com') },
+            update: { role: 'USER' },
+            create: {
+                name: lead.name,
+                email: lead.email || (lead.phone + '@elements.com'),
+                phone: lead.phone,
+                role: 'USER'
+            }
+        });
 
-    lead.convertedToCustomer = true;
-    lead.customerId = customer.id;
-    lead.status = 'won';
-    lead.updatedAt = new Date().toISOString();
+        // Update lead status
+        await prisma.cRMLead.update({
+            where: { id },
+            data: { status: 'WON' }
+        });
 
-    res.json({ success: true, message: 'Lead converted to customer!', data: { lead, customer } });
+        res.json({ success: true, message: 'Lead converted to customer', data: user });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Conversion failed', error: error.message });
+    }
 });
 
 // ==================== CUSTOMERS ====================
-app.get('/api/admin/customers', requireAdmin, (req, res) => {
-    // Collect unique customers from actual orders
-    const customerMap = new Map();
-
-    // 1. Add explicitly converted customers (leads)
-    customers.forEach(c => {
-        customerMap.set(c.email, { ...c, type: 'converted' });
-    });
-
-    // 2. Add/Update from orders
-    orders.forEach(order => {
-        const email = order.customer.email;
-        if (!customerMap.has(email)) {
-            customerMap.set(email, {
-                id: `cust-${uuidv4().slice(0, 8)}`,
-                name: order.customer.name || 'Unknown',
-                email: order.customer.email,
-                phone: order.customer.phone || '',
-                totalOrders: 0,
-                totalSpend: 0,
-                lastOrder: order.createdAt,
-                status: 'active',
-                joined: order.createdAt,
-                type: 'order'
-            });
-        }
-        const c = customerMap.get(email);
-        c.totalOrders += 1;
-        c.totalSpend += Number(order.total) || 0;
-        if (new Date(order.createdAt) > new Date(c.lastOrder)) {
-            c.lastOrder = order.createdAt;
-        }
-    });
-
-    const customerList = Array.from(customerMap.values());
-    res.json({ success: true, data: customerList });
+app.get('/api/admin/customers', requireAdmin, async (req, res) => {
+    try {
+        const customers = await prisma.user.findMany({
+            where: { role: 'USER' },
+            include: {
+                orders: true,
+                leads: true
+            }
+        });
+        
+        const formatted = customers.map(c => ({
+            id: c.id,
+            name: c.name,
+            email: c.email,
+            phone: c.phone,
+            joined: c.createdAt,
+            totalOrders: c.orders.length,
+            totalSpend: c.orders.reduce((sum, o) => sum + Number(o.total), 0),
+            lastOrder: c.orders.length > 0 ? c.orders[0].createdAt : null,
+            type: c.leads.length > 0 ? 'converted' : 'direct'
+        }));
+        
+        res.json({ success: true, data: formatted });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to fetch customers', error: error.message });
+    }
 });
 
+
 // ==================== ONLINE PAYMENTS ====================
-app.get('/api/admin/payments', requireAdmin, (req, res) => {
-    const { status, method, page = 1, limit = 20 } = req.query;
-    let filtered = [...payments];
-    if (status && status !== 'all') filtered = filtered.filter(p => p.status === status);
-    if (method && method !== 'all') filtered = filtered.filter(p => p.method === method);
-    filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    const total = filtered.length;
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const start = (pageNum - 1) * limitNum;
-    const paginated = filtered.slice(start, start + limitNum);
-
-    const summary = {
-        totalCollected: payments.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0),
-        totalPending: payments.filter(p => p.status === 'pending').reduce((s, p) => s + p.amount, 0),
-        totalRefunded: payments.filter(p => p.status === 'refunded').reduce((s, p) => s + p.amount, 0),
-        byMethod: {},
-    };
-    payments.forEach(p => { summary.byMethod[p.method] = (summary.byMethod[p.method] || 0) + p.amount; });
-
-    res.json({ success: true, data: paginated, summary, pagination: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) } });
+app.get('/api/admin/payments', requireAdmin, async (req, res) => {
+    // Note: Payments are currently tied to orders in our schema. 
+    // We can fetch them from Order model or add a separate Payment model if needed.
+    // For now, let's treat completed orders as payments.
+    try {
+        const orders = await prisma.order.findMany({
+            where: { paymentStatus: 'COMPLETED' },
+            orderBy: { createdAt: 'desc' }
+        });
+        
+        const summary = {
+            totalCollected: orders.reduce((s, o) => s + Number(o.total), 0),
+            totalPending: 0,
+            totalRefunded: 0,
+            byMethod: {},
+        };
+        
+        res.json({ success: true, data: orders, summary });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Payment fetch failed', error: error.message });
+    }
 });
 
 // ==================== WEBHOOK RECEIVERS ====================
 
 // Generic webhook
-app.post('/api/webhooks/generic', (req, res) => {
+app.post('/api/webhooks/generic', async (req, res) => {
     const { name, email, phone, source = 'webhook', message = '' } = req.body;
     if (!name && !email && !phone) return res.status(400).json({ success: false, message: 'At least one contact field is required' });
-    const lead = {
-        id: uuidv4(), name: name || 'Unknown', email: email || '', phone: phone || '',
-        source, message, type: 'webhook', status: 'new',
-        notes: [], followUps: [], convertedToCustomer: false, customerId: null,
-        assignedTo: '', value: 0, tags: [source],
-        timestamp: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    };
-    userLeads.push(lead);
-    res.status(201).json({ success: true, message: 'Lead captured' });
+    try {
+        await prisma.cRMLead.create({
+            data: {
+                name: name || 'Unknown',
+                email: email || '',
+                phone: phone || '',
+                source: source || 'WEBHOOK',
+                status: 'NEW'
+            }
+        });
+        res.status(201).json({ success: true, message: 'Lead captured' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lead capture failed', error: error.message });
+    }
 });
 
 // IndiaMART webhook
-app.post('/api/webhooks/indiamart', (req, res) => {
-    const { SENDER_NAME, SENDER_EMAIL, SENDER_MOBILE, QUERY_MESSAGE, QUERY_PRODUCT_NAME } = req.body;
-    const lead = {
-        id: uuidv4(), name: SENDER_NAME || 'IndiaMART Lead', email: SENDER_EMAIL || '', phone: SENDER_MOBILE || '',
-        source: 'indiamart', message: QUERY_MESSAGE || '', product: QUERY_PRODUCT_NAME || '',
-        type: 'B2B Inquiry', status: 'new', notes: [], followUps: [],
-        convertedToCustomer: false, customerId: null, assignedTo: '', value: 0, tags: ['indiamart'],
-        timestamp: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    };
-    userLeads.push(lead);
-    console.log(`[WEBHOOK] IndiaMART lead: ${lead.name}`);
-    res.status(201).json({ success: true, message: 'IndiaMART lead captured' });
+app.post('/api/webhooks/indiamart', async (req, res) => {
+    const { SENDER_NAME, SENDER_EMAIL, SENDER_MOBILE } = req.body;
+    try {
+        await prisma.cRMLead.create({
+            data: {
+                name: SENDER_NAME || 'IndiaMART Lead',
+                email: SENDER_EMAIL || '',
+                phone: SENDER_MOBILE || '',
+                source: 'INDIAMART',
+                status: 'NEW'
+            }
+        });
+        res.status(201).json({ success: true, message: 'IndiaMART lead captured' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'IndiaMART lead capture failed', error: error.message });
+    }
 });
 
 // Amazon webhook
-app.post('/api/webhooks/amazon', (req, res) => {
-    const { orderType, customerName, email, phone, product, quantity } = req.body;
-    const lead = {
-        id: uuidv4(), name: customerName || 'Amazon Customer', email: email || '', phone: phone || '',
-        source: 'amazon', message: `Order: ${product || 'N/A'} x${quantity || 1}`, type: orderType || 'order',
-        status: 'new', notes: [], followUps: [], convertedToCustomer: false, customerId: null,
-        assignedTo: '', value: 0, tags: ['amazon'],
-        timestamp: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    };
-    userLeads.push(lead);
-    console.log(`[WEBHOOK] Amazon lead: ${lead.name}`);
-    res.status(201).json({ success: true, message: 'Amazon lead captured' });
+app.post('/api/webhooks/amazon', async (req, res) => {
+    const { customerName, email, phone } = req.body;
+    try {
+        await prisma.cRMLead.create({
+            data: {
+                name: customerName || 'Amazon Customer',
+                email: email || '',
+                phone: phone || '',
+                source: 'AMAZON',
+                status: 'NEW'
+            }
+        });
+        res.status(201).json({ success: true, message: 'Amazon lead captured' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Amazon lead capture failed', error: error.message });
+    }
 });
 
 // Flipkart webhook
-app.post('/api/webhooks/flipkart', (req, res) => {
-    const { customerName, email, phone, productName, orderId } = req.body;
-    const lead = {
-        id: uuidv4(), name: customerName || 'Flipkart Customer', email: email || '', phone: phone || '',
-        source: 'flipkart', message: `Order #${orderId || 'N/A'}: ${productName || 'N/A'}`,
-        type: 'order', status: 'new', notes: [], followUps: [], convertedToCustomer: false, customerId: null,
-        assignedTo: '', value: 0, tags: ['flipkart'],
-        timestamp: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    };
-    userLeads.push(lead);
-    console.log(`[WEBHOOK] Flipkart lead: ${lead.name}`);
-    res.status(201).json({ success: true, message: 'Flipkart lead captured' });
+app.post('/api/webhooks/flipkart', async (req, res) => {
+    const { customerName, email, phone } = req.body;
+    try {
+        await prisma.cRMLead.create({
+            data: {
+                name: customerName || 'Flipkart Customer',
+                email: email || '',
+                phone: phone || '',
+                source: 'FLIPKART',
+                status: 'NEW'
+            }
+        });
+        res.status(201).json({ success: true, message: 'Flipkart lead captured' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Flipkart lead capture failed', error: error.message });
+    }
 });
 
 // Meesho webhook
-app.post('/api/webhooks/meesho', (req, res) => {
-    const { customerName, email, phone, productName, orderId, orderValue } = req.body;
-    const lead = {
-        id: uuidv4(), name: customerName || 'Meesho Customer', email: email || '', phone: phone || '',
-        source: 'meesho', message: `Meesho Order #${orderId || 'N/A'}: ${productName || 'N/A'}`,
-        type: 'order', status: 'new', notes: [], followUps: [], convertedToCustomer: false, customerId: null,
-        assignedTo: '', value: Number(orderValue) || 0, tags: ['meesho'],
-        timestamp: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    };
-    userLeads.push(lead);
-    console.log(`[WEBHOOK] Meesho lead: ${lead.name}`);
-    res.status(201).json({ success: true, message: 'Meesho lead captured' });
+app.post('/api/webhooks/meesho', async (req, res) => {
+    const { customerName, email, phone } = req.body;
+    try {
+        await prisma.cRMLead.create({
+            data: {
+                name: customerName || 'Meesho Customer',
+                email: email || '',
+                phone: phone || '',
+                source: 'MEESHO',
+                status: 'NEW'
+            }
+        });
+        res.status(201).json({ success: true, message: 'Meesho lead captured' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Meesho lead capture failed', error: error.message });
+    }
 });
 
 // STAFF LOGIN via Backend (called by NextAuth)
@@ -1226,140 +1818,176 @@ app.get('/api/admin/ai/recommendations/:productId', requireAdmin, (req, res) => 
 });
 
 // AI Sales Forecast — simple trending analysis
-app.get('/api/admin/ai/forecast', requireAdmin, (req, res) => {
-    const now = new Date();
-    const last30 = orders.filter(o => (now - new Date(o.createdAt)) < 30 * 24 * 60 * 60 * 1000);
-    const prev30 = orders.filter(o => { const d = now - new Date(o.createdAt); return d >= 30 * 24 * 60 * 60 * 1000 && d < 60 * 24 * 60 * 60 * 1000; });
-    const last30Rev = last30.reduce((s, o) => s + (parseFloat(o.total) || 0), 0);
-    const prev30Rev = prev30.reduce((s, o) => s + (parseFloat(o.total) || 0), 0);
-    const growthRate = prev30Rev > 0 ? ((last30Rev - prev30Rev) / prev30Rev) * 100 : 0;
-    const forecastNext30 = last30Rev * (1 + growthRate / 100);
-    // Lead velocity
-    const last7Leads = userLeads.filter(l => (now - new Date(l.timestamp)) < 7 * 24 * 60 * 60 * 1000).length;
-    const prev7Leads = userLeads.filter(l => { const d = now - new Date(l.timestamp); return d >= 7 * 24 * 60 * 60 * 1000 && d < 14 * 24 * 60 * 60 * 1000; }).length;
-    const insights = [];
-    if (growthRate > 10) insights.push({ type: 'positive', text: `Revenue growing ${growthRate.toFixed(1)}% MoM. Keep momentum!` });
-    else if (growthRate < -10) insights.push({ type: 'warning', text: `Revenue declined ${Math.abs(growthRate).toFixed(1)}% MoM. Review pricing/marketing.` });
-    if (last7Leads > prev7Leads) insights.push({ type: 'positive', text: `Lead velocity up: ${last7Leads} leads this week vs ${prev7Leads} last week.` });
-    const lowStock = products.filter(p => p.stock > 0 && p.stock < 10);
-    if (lowStock.length > 0) insights.push({ type: 'warning', text: `${lowStock.length} products critically low on stock. Reorder soon.` });
-    const unconverted = userLeads.filter(l => l.status === 'new' && (now - new Date(l.timestamp)) > 3 * 24 * 60 * 60 * 1000);
-    if (unconverted.length > 0) insights.push({ type: 'action', text: `${unconverted.length} leads untouched for 3+ days. Assign & follow up.` });
-    res.json({ success: true, data: { last30Revenue: last30Rev, prev30Revenue: prev30Rev, growthRate: growthRate.toFixed(1), forecastNext30: forecastNext30.toFixed(0), last7Leads, prev7Leads, insights, totalForecasted: forecastNext30, ordersLast30: last30.length } });
+app.get('/api/admin/ai/forecast', requireAdmin, async (req, res) => {
+    try {
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+        
+        const orders = await prisma.order.findMany({
+            where: { createdAt: { gte: sixtyDaysAgo } }
+        });
+        const leads = await prisma.cRMLead.findMany({
+            where: { createdAt: { gte: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000) } }
+        });
+        const lowStockProducts = await prisma.product.count({
+            where: { stock: { gt: 0, lt: 10 } }
+        });
+
+        const last30 = orders.filter(o => new Date(o.createdAt) >= thirtyDaysAgo);
+        const prev30 = orders.filter(o => new Date(o.createdAt) < thirtyDaysAgo);
+        
+        const last30Rev = last30.reduce((s, o) => s + Number(o.total), 0);
+        const prev30Rev = prev30.reduce((s, o) => s + Number(o.total), 0);
+        const growthRate = prev30Rev > 0 ? ((last30Rev - prev30Rev) / prev30Rev) * 100 : 0;
+        const forecastNext30 = last30Rev * (1 + growthRate / 100);
+
+        const last7Leads = leads.filter(l => new Date(l.createdAt) >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)).length;
+        const prev7Leads = leads.length - last7Leads;
+
+        const insights = [];
+        if (growthRate > 10) insights.push({ type: 'positive', text: `Revenue growing ${growthRate.toFixed(1)}% MoM. Keep momentum!` });
+        else if (growthRate < -10) insights.push({ type: 'warning', text: `Revenue declined ${Math.abs(growthRate).toFixed(1)}% MoM. Review pricing/marketing.` });
+        if (last7Leads > prev7Leads) insights.push({ type: 'positive', text: `Lead velocity up: ${last7Leads} leads this week vs ${prev7Leads} last week.` });
+        if (lowStockProducts > 0) insights.push({ type: 'warning', text: `${lowStockProducts} products critically low on stock. Reorder soon.` });
+
+        res.json({
+            success: true,
+            data: {
+                last30Revenue: last30Rev,
+                prev30Revenue: prev30Rev,
+                growthRate: growthRate.toFixed(1),
+                forecastNext30: forecastNext30.toFixed(0),
+                last7Leads,
+                prev7Leads,
+                insights,
+                totalForecasted: forecastNext30,
+                ordersLast30: last30.length
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Forecast failed', error: error.message });
+    }
 });
 
 // ==================== LEAD AUTOMATION ====================
 
 // Auto-assign leads based on source
-app.post('/api/admin/automation/auto-assign', requireAdmin, (req, res) => {
-    const { rules } = req.body; // e.g. [{ source: 'indiamart', assignTo: 'Suresh' }, ...]
+app.post('/api/admin/automation/auto-assign', requireAdmin, async (req, res) => {
+    const { rules } = req.body; // e.g. [{ source: 'INDIAMART', assignTo: 'Suresh' }, ...]
     if (!rules || !Array.isArray(rules)) return res.status(400).json({ success: false, message: 'Rules array required' });
-    let assigned = 0;
-    userLeads.forEach(lead => {
-        if (!lead.assignedTo) {
-            const rule = rules.find(r => r.source === lead.source || r.source === 'all');
-            if (rule) { lead.assignedTo = rule.assignTo; lead.updatedAt = new Date().toISOString(); assigned++; }
-        }
-    });
-    res.json({ success: true, message: `Auto-assigned ${assigned} leads`, data: { assigned } });
-});
+    
+    try {
+        let assignedCount = 0;
+        const unassignedLeads = await prisma.cRMLead.findMany({
+            where: { status: 'NEW' }
+        });
 
-// Auto follow-up scheduling for untouched leads
-app.post('/api/admin/automation/schedule-followups', requireAdmin, (req, res) => {
-    const { daysThreshold = 2, followUpType = 'call' } = req.body;
-    const now = new Date();
-    let scheduled = 0;
-    userLeads.forEach(lead => {
-        if (lead.status === 'new' && !lead.convertedToCustomer) {
-            const daysSince = (now - new Date(lead.timestamp)) / (1000 * 60 * 60 * 24);
-            const hasUpcoming = (lead.followUps || []).some(f => f.status === 'scheduled');
-            if (daysSince >= daysThreshold && !hasUpcoming) {
-                if (!lead.followUps) lead.followUps = [];
-                const scheduleDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // tomorrow
-                lead.followUps.push({
-                    id: uuidv4(), scheduledAt: scheduleDate.toISOString(), type: followUpType,
-                    note: `Auto-scheduled: Lead untouched for ${Math.floor(daysSince)} days`, status: 'scheduled', createdAt: now.toISOString(),
+        for (const lead of unassignedLeads) {
+            const rule = rules.find(r => r.source === lead.source || r.source === 'ALL');
+            if (rule) {
+                await prisma.cRMLead.update({
+                    where: { id: lead.id },
+                    data: { status: 'ASSIGNED' }
                 });
-                lead.updatedAt = now.toISOString();
-                scheduled++;
+                assignedCount++;
             }
         }
-    });
-    res.json({ success: true, message: `Auto-scheduled ${scheduled} follow-ups`, data: { scheduled } });
+        res.json({ success: true, message: `Auto-assigned ${assignedCount} leads` });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Auto-assignment failed', error: error.message });
+    }
 });
 
 // Bulk lead status update
-app.post('/api/admin/automation/bulk-status', requireAdmin, (req, res) => {
+app.post('/api/admin/automation/bulk-status', requireAdmin, async (req, res) => {
     const { leadIds, status } = req.body;
     if (!leadIds || !Array.isArray(leadIds) || !status) return res.status(400).json({ success: false, message: 'leadIds array and status required' });
-    let updated = 0;
-    leadIds.forEach(id => {
-        const lead = userLeads.find(l => l.id === id);
-        if (lead) { lead.status = status; lead.updatedAt = new Date().toISOString(); updated++; }
-    });
-    res.json({ success: true, message: `Updated ${updated} leads to ${status}`, data: { updated } });
+    try {
+        const result = await prisma.cRMLead.updateMany({
+            where: { id: { in: leadIds } },
+            data: { status: status.toUpperCase() }
+        });
+        res.json({ success: true, message: `Updated ${result.count} leads to ${status}` });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Bulk update failed', error: error.message });
+    }
 });
 
 // ==================== BANNERS CRUD ====================
-const banners = [];
 
 // List banners
-app.get('/api/admin/banners', requireAdmin, (req, res) => {
-    res.json({ success: true, data: banners });
+app.get('/api/admin/banners', requireAdmin, async (req, res) => {
+    try {
+        const banners = await prisma.banner.findMany({ orderBy: { createdAt: 'desc' } });
+        res.json({ success: true, data: banners });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Banners fetch failed', error: error.message });
+    }
 });
 
 // Create banner
-app.post('/api/admin/banners', requireAdmin, (req, res) => {
+app.post('/api/admin/banners', requireAdmin, async (req, res) => {
     const { title, image, link, position, active } = req.body;
     if (!title || !image) return res.status(400).json({ success: false, message: 'Title and image URL are required' });
-    const banner = {
-        id: uuidv4(),
-        title: sanitize(title),
-        image: sanitize(image),
-        link: sanitize(link || '/'),
-        position: sanitize(position || 'hero'),
-        active: active !== false,
-        createdAt: new Date().toISOString(),
-    };
-    banners.push(banner);
-    res.status(201).json({ success: true, data: banner });
+    try {
+        const banner = await prisma.banner.create({
+            data: {
+                title: sanitize(title),
+                image: sanitize(image),
+                link: sanitize(link || '/'),
+                position: sanitize(position || 'hero'),
+                active: active !== false
+            }
+        });
+        res.status(201).json({ success: true, data: banner });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Banner creation failed', error: error.message });
+    }
 });
 
 // Update banner
-app.put('/api/admin/banners/:id', requireAdmin, (req, res) => {
-    const banner = banners.find(b => b.id === req.params.id);
-    if (!banner) return res.status(404).json({ success: false, message: 'Banner not found' });
-    const { title, image, link, position, active } = req.body;
-    if (title) banner.title = sanitize(title);
-    if (image) banner.image = sanitize(image);
-    if (link !== undefined) banner.link = sanitize(link);
-    if (position) banner.position = sanitize(position);
-    if (active !== undefined) banner.active = active;
-    banner.updatedAt = new Date().toISOString();
-    res.json({ success: true, data: banner });
+app.put('/api/admin/banners/:id', requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const banner = await prisma.banner.update({
+            where: { id },
+            data: { ...req.body }
+        });
+        res.json({ success: true, data: banner });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Banner update failed', error: error.message });
+    }
 });
 
 // Toggle banner active
-app.patch('/api/admin/banners/:id/toggle', requireAdmin, (req, res) => {
-    const banner = banners.find(b => b.id === req.params.id);
-    if (!banner) return res.status(404).json({ success: false, message: 'Banner not found' });
-    banner.active = !banner.active;
-    banner.updatedAt = new Date().toISOString();
-    res.json({ success: true, data: banner });
+app.patch('/api/admin/banners/:id/toggle', requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const banner = await prisma.banner.findUnique({ where: { id } });
+        if (!banner) return res.status(404).json({ success: false, message: 'Banner not found' });
+        const updated = await prisma.banner.update({
+            where: { id },
+            data: { active: !banner.active }
+        });
+        res.json({ success: true, data: updated });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Toggle failed', error: error.message });
+    }
 });
 
 // Delete banner
-app.delete('/api/admin/banners/:id', requireAdmin, (req, res) => {
-    const idx = banners.findIndex(b => b.id === req.params.id);
-    if (idx === -1) return res.status(404).json({ success: false, message: 'Banner not found' });
-    banners.splice(idx, 1);
-    res.json({ success: true, message: 'Banner deleted' });
+app.delete('/api/admin/banners/:id', requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.banner.delete({ where: { id } });
+        res.json({ success: true, message: 'Banner deleted' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Delete failed', error: error.message });
+    }
 });
 
 // ==================== STAFF / USER MANAGEMENT (RBAC) ====================
-const staffUsers = [
-    { id: 'staff-admin-1', name: 'Admin', email: 'admin@elements.com', phone: '+91 98765 43210', role: 'admin', status: 'active', password: 'password123', avatar: '', createdAt: new Date().toISOString(), lastLogin: new Date().toISOString(), permissions: ['all'] },
-];
 const ROLES = {
     admin: { label: 'Administrator', permissions: ['dashboard', 'products', 'orders', 'crm', 'payments', 'banners', 'tasks', 'campaigns', 'reports', 'integrations', 'staff', 'seo', 'settings'] },
     sub_admin: { label: 'Sub Admin', permissions: ['dashboard', 'products', 'orders', 'crm', 'banners', 'reports', 'tasks'] },
@@ -1370,236 +1998,412 @@ const ROLES = {
 };
 
 // Staff login (email+password)
-app.post('/api/auth/staff/login', authLimiter, (req, res) => {
+app.post('/api/auth/staff/login', authLimiter, async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ success: false, message: 'Email and password required' });
-    const user = staffUsers.find(s => s.email === email);
-    if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    if (user.password !== password) return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    if (user.status !== 'active') return res.status(403).json({ success: false, message: 'Account deactivated. Contact admin.' });
-    user.lastLogin = new Date().toISOString();
-    const safeUser = { id: user.id, name: user.name, email: user.email, role: user.role, permissions: user.permissions };
-    res.json({ success: true, user: safeUser });
-});
+    
+    try {
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user || user.password !== password) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+        if (user.role !== 'ADMIN') {
+            return res.status(403).json({ success: false, message: 'Access denied' });
+        }
 
-// List staff (hide passwords)
-app.get('/api/admin/staff', requireAdmin, (req, res) => {
-    const safe = staffUsers.map(({ password, ...rest }) => rest);
-    res.json({ success: true, data: safe, roles: ROLES });
-});
-
-// Create staff user (with password)
-app.post('/api/admin/staff', requireAdmin, (req, res) => {
-    const { name, email, phone, role, password, permissions: customPerms } = req.body;
-    if (!name || !email || !password) return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
-    if (password.length < 6) return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
-    if (!ROLES[role || 'staff']) return res.status(400).json({ success: false, message: 'Invalid role' });
-    const existing = staffUsers.find(s => s.email === email);
-    if (existing) return res.status(409).json({ success: false, message: 'User with this email already exists' });
-    const user = {
-        id: 'staff-' + uuidv4().slice(0, 8),
-        name: sanitize(name),
-        email: sanitize(email),
-        phone: sanitize(phone || ''),
-        role: role || 'staff',
-        password: password,
-        status: 'active',
-        avatar: '',
-        createdAt: new Date().toISOString(),
-        lastLogin: null,
-        permissions: customPerms || ROLES[role || 'staff'].permissions,
-    };
-    staffUsers.push(user);
-    const { password: pw, ...safeUser } = user;
-    res.status(201).json({ success: true, data: safeUser });
-});
-
-// Update staff role
-app.put('/api/admin/staff/:id', requireAdmin, (req, res) => {
-    const user = staffUsers.find(s => s.id === req.params.id);
-    if (!user) return res.status(404).json({ success: false, message: 'Staff user not found' });
-
-    // Protect root admin from modification by others
-    if (user.email === 'admin@elements.com') {
-        return res.status(403).json({ success: false, message: 'Root admin account cannot be modified' });
+        const safeUser = { id: user.id, name: user.name, email: user.email, role: user.role };
+        res.json({ success: true, user: safeUser });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Login failed', error: error.message });
     }
-
-    const { name, phone, role, status, password } = req.body;
-    if (name) user.name = sanitize(name);
-    if (phone !== undefined) user.phone = sanitize(phone);
-    if (role && ROLES[role]) { user.role = role; user.permissions = ROLES[role].permissions; }
-    if (status) user.status = status;
-    if (password) user.password = password; // Reset password if provided
-    user.updatedAt = new Date().toISOString();
-    res.json({ success: true, data: user });
 });
 
-// Staff reset password (specific endpoint for clarity if needed, though PUT above handles it)
-app.patch('/api/admin/staff/:id/password', requireAdmin, (req, res) => {
-    const user = staffUsers.find(s => s.id === req.params.id);
-    if (!user) return res.status(404).json({ success: false, message: 'Staff user not found' });
-    const { password } = req.body;
-    if (!password) return res.status(400).json({ success: false, message: 'New password required' });
-    user.password = password;
-    user.updatedAt = new Date().toISOString();
-    res.json({ success: true, message: 'Password reset successful' });
-});
-
-// Delete staff
-app.delete('/api/admin/staff/:id', requireAdmin, (req, res) => {
-    const idx = staffUsers.findIndex(s => s.id === req.params.id);
-    if (idx === -1) return res.status(404).json({ success: false, message: 'Staff user not found' });
-
-    // Protect root admin from deletion
-    if (staffUsers[idx].email === 'admin@elements.com') {
-        return res.status(403).json({ success: false, message: 'Root admin account cannot be deleted' });
+// List staff
+app.get('/api/admin/staff', requireAdmin, async (req, res) => {
+    try {
+        const staff = await prisma.user.findMany({
+            where: { role: 'ADMIN' },
+            select: { id: true, name: true, email: true, role: true, createdAt: true }
+        });
+        res.json({ success: true, data: staff });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Staff fetch failed', error: error.message });
     }
-
-    if (staffUsers[idx].role === 'admin' && staffUsers.filter(s => s.role === 'admin').length <= 1) {
-        return res.status(400).json({ success: false, message: 'Cannot delete the last admin' });
-    }
-    staffUsers.splice(idx, 1);
-    res.json({ success: true, message: 'Staff user deleted' });
 });
 
 // ==================== REVENUE & ANALYTICS ====================
-app.get('/api/admin/revenue', requireAdmin, (req, res) => {
-    // Generate last 7 days revenue data from orders
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-        const d = new Date(); d.setDate(d.getDate() - i);
-        const label = d.toLocaleDateString('en-IN', { weekday: 'short' });
-        const dayOrders = orders.filter(o => {
-            const od = new Date(o.createdAt);
-            return od.toDateString() === d.toDateString();
+app.get('/api/admin/revenue', requireAdmin, async (req, res) => {
+    try {
+        const orders = await prisma.order.findMany({
+            where: { status: { not: 'CANCELLED' } },
+            orderBy: { createdAt: 'asc' }
         });
-        const revenue = dayOrders.reduce((s, o) => s + (o.total || 0), 0);
-        days.push({ label, revenue, orders: dayOrders.length });
-    }
-    const totalRevenue = orders.reduce((s, o) => s + (o.total || 0), 0);
-    const avgOrder = orders.length > 0 ? Math.round(totalRevenue / orders.length) : 0;
-    // Month-over-month growth (simulated from data)
-    const thisMonth = orders.filter(o => new Date(o.createdAt).getMonth() === new Date().getMonth()).reduce((s, o) => s + (o.total || 0), 0);
-    const lastMonth = totalRevenue - thisMonth;
-    const growth = lastMonth > 0 ? Math.round(((thisMonth - lastMonth) / lastMonth) * 100) : 0;
 
-    res.json({
-        success: true,
-        data: {
-            daily: days,
-            totalRevenue,
-            avgOrderValue: avgOrder,
-            monthGrowth: growth,
-            totalOrders: orders.length,
-            onlinePayments: payments.length,
-            onlineRevenue: payments.reduce((s, p) => s + (p.amount || 0), 0),
+        const payments = await prisma.order.findMany({
+            where: { paymentStatus: 'COMPLETED' }
+        });
+
+        // Generate last 7 days revenue data from orders
+        const days = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(); d.setDate(d.getDate() - i);
+            const label = d.toLocaleDateString('en-IN', { weekday: 'short' });
+            const dayOrders = orders.filter(o => {
+                const od = new Date(o.createdAt);
+                return od.toDateString() === d.toDateString();
+            });
+            const revenue = dayOrders.reduce((s, o) => s + Number(o.total), 0);
+            days.push({ label, revenue, orders: dayOrders.length });
         }
-    });
+
+        const totalRevenue = orders.reduce((s, o) => s + Number(o.total), 0);
+        const avgOrder = orders.length > 0 ? Math.round(totalRevenue / orders.length) : 0;
+        
+        const thisMonth = orders.filter(o => new Date(o.createdAt).getMonth() === new Date().getMonth()).reduce((s, o) => s + Number(o.total), 0);
+        const lastMonth = totalRevenue - thisMonth;
+        const growth = lastMonth > 0 ? Math.round(((thisMonth - lastMonth) / lastMonth) * 100) : 0;
+
+        res.json({
+            success: true,
+            data: {
+                daily: days,
+                totalRevenue,
+                avgOrderValue: avgOrder,
+                monthGrowth: growth,
+                totalOrders: orders.length,
+                onlinePayments: payments.length,
+                onlineRevenue: payments.reduce((s, p) => s + Number(p.total), 0),
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Revenue analysis failed', error: error.message });
+    }
 });
 
 // ==================== CAMPAIGNS CRUD ====================
-const campaigns = [];
 
-app.get('/api/admin/campaigns', requireAdmin, (req, res) => {
-    res.json({ success: true, data: campaigns });
+app.get('/api/admin/campaigns', requireAdmin, async (req, res) => {
+    try {
+        const campaigns = await prisma.campaign.findMany({ orderBy: { createdAt: 'desc' } });
+        res.json({ success: true, data: campaigns });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Campaigns fetch failed', error: error.message });
+    }
 });
 
-app.post('/api/admin/campaigns', requireAdmin, (req, res) => {
+app.post('/api/admin/campaigns', requireAdmin, async (req, res) => {
     const { name, platform, budget, status: cStatus } = req.body;
     if (!name || !platform) return res.status(400).json({ success: false, message: 'Name and platform required' });
-    const c = {
-        id: uuidv4(), name: sanitize(name), platform: sanitize(platform),
-        budget: Number(budget) || 0, spent: 0, clicks: 0, conversions: 0,
-        status: cStatus || 'draft', createdAt: new Date().toISOString(),
-    };
-    campaigns.push(c);
-    res.status(201).json({ success: true, data: c });
+    try {
+        const c = await prisma.campaign.create({
+            data: {
+                name: sanitize(name),
+                platform: sanitize(platform),
+                budget: Number(budget) || 0,
+                status: cStatus || 'draft'
+            }
+        });
+        res.status(201).json({ success: true, data: c });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Campaign creation failed', error: error.message });
+    }
 });
 
-app.put('/api/admin/campaigns/:id', requireAdmin, (req, res) => {
-    const c = campaigns.find(x => x.id === req.params.id);
-    if (!c) return res.status(404).json({ success: false, message: 'Campaign not found' });
-    const { name, platform, budget, status: cStatus } = req.body;
-    if (name) c.name = sanitize(name);
-    if (platform) c.platform = sanitize(platform);
-    if (budget !== undefined) c.budget = Number(budget);
-    if (cStatus) c.status = cStatus;
-    c.updatedAt = new Date().toISOString();
-    res.json({ success: true, data: c });
+app.put('/api/admin/campaigns/:id', requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const c = await prisma.campaign.update({
+            where: { id },
+            data: { ...req.body }
+        });
+        res.json({ success: true, data: c });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Campaign update failed', error: error.message });
+    }
 });
 
-app.delete('/api/admin/campaigns/:id', requireAdmin, (req, res) => {
-    const idx = campaigns.findIndex(x => x.id === req.params.id);
-    if (idx === -1) return res.status(404).json({ success: false, message: 'Campaign not found' });
-    campaigns.splice(idx, 1);
-    res.json({ success: true, message: 'Campaign deleted' });
+app.delete('/api/admin/campaigns/:id', requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.campaign.delete({ where: { id } });
+        res.json({ success: true, message: 'Campaign deleted' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Delete failed', error: error.message });
+    }
 });
 
 // ==================== SETTINGS ====================
-let storeSettings = {
-    storeName: 'Hindustan Elements', tagline: 'Premium Building Elements',
-    supportEmail: 'support@hindustan-elements.com', contactPhone: '+91 98765 43210',
-    freeShippingAbove: 5000, deliveryTime: '3-7 Business Days',
-    gstNumber: '', panNumber: '',
-};
 
-app.get('/api/admin/settings', requireAdmin, (req, res) => {
-    res.json({ success: true, data: storeSettings });
+app.get('/api/admin/settings', requireAdmin, async (req, res) => {
+    try {
+        let settings = await prisma.setting.findUnique({ where: { id: 'global' } });
+        if (!settings) {
+            settings = await prisma.setting.create({ data: { id: 'global' } });
+        }
+        res.json({ success: true, data: settings });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Settings fetch failed', error: error.message });
+    }
 });
 
-app.put('/api/admin/settings', requireAdmin, (req, res) => {
-    storeSettings = { ...storeSettings, ...req.body };
-    res.json({ success: true, data: storeSettings, message: 'Settings saved' });
+app.put('/api/admin/settings', requireAdmin, async (req, res) => {
+    try {
+        const settings = await prisma.setting.upsert({
+            where: { id: 'global' },
+            update: { ...req.body },
+            create: { id: 'global', ...req.body }
+        });
+        res.json({ success: true, data: settings, message: 'Settings saved' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Settings update failed', error: error.message });
+    }
 });
 
 // ==================== STAFF PERMISSIONS UPDATE ====================
-app.put('/api/admin/staff/:id/permissions', requireAdmin, (req, res) => {
-    const user = staffUsers.find(s => s.id === req.params.id);
-    if (!user) return res.status(404).json({ success: false, message: 'Staff user not found' });
-
-    if (user.email === 'admin@elements.com') {
-        return res.status(403).json({ success: false, message: 'Root admin permissions cannot be modified' });
-    }
-
+app.put('/api/admin/staff/:id/permissions', requireAdmin, async (req, res) => {
+    const { id } = req.params;
     const { permissions } = req.body;
+    
     if (!Array.isArray(permissions)) return res.status(400).json({ success: false, message: 'Permissions must be an array' });
-    user.permissions = permissions;
-    user.updatedAt = new Date().toISOString();
-    const { password, ...safe } = user;
-    res.json({ success: true, data: safe });
+
+    try {
+        const user = await prisma.user.findUnique({ where: { id } });
+        if (!user) return res.status(404).json({ success: false, message: 'Staff user not found' });
+
+        if (user.email === 'admin@elements.com') {
+            return res.status(403).json({ success: false, message: 'Root admin permissions cannot be modified' });
+        }
+
+        const updated = await prisma.user.update({
+            where: { id },
+            data: { permissions },
+            select: { id: true, name: true, email: true, role: true, permissions: true, createdAt: true }
+        });
+        res.json({ success: true, data: updated });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Permissions update failed', error: error.message });
+    }
 });
 
 
 // ==================== START SERVER ====================
 // ==================== SEO MANAGEMENT ====================
-let pageSeo = [
-    { id: '1', page: 'Home', path: '/', metaTitle: 'Elements - Premium Home Décor', metaDescription: 'Discover high-quality kitchen sinks, floor guards, and wall tiles.', ogImage: '/images/og-home.jpg', keywords: 'home decor, kitchen sinks, tiles, india' },
-];
 
-app.get('/api/admin/seo', requireAdmin, (req, res) => {
-    res.json({ success: true, data: pageSeo });
+app.get('/api/admin/seo', requireAdmin, async (req, res) => {
+    try {
+        const seo = await prisma.sEO.findMany({ orderBy: { createdAt: 'desc' } });
+        res.json({ success: true, data: seo });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'SEO fetch failed', error: error.message });
+    }
 });
 
-app.post('/api/admin/seo', requireAdmin, (req, res) => {
-    const { page, path, metaTitle, metaDescription, ogImage, keywords } = req.body;
-    const entry = { id: uuidv4(), page, path, metaTitle, metaDescription, ogImage, keywords, createdAt: new Date().toISOString() };
-    pageSeo.push(entry);
-    res.status(201).json({ success: true, data: entry });
+app.post('/api/admin/seo', requireAdmin, async (req, res) => {
+    try {
+        const entry = await prisma.sEO.create({ data: { ...req.body } });
+        res.status(201).json({ success: true, data: entry });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'SEO creation failed', error: error.message });
+    }
 });
 
-app.put('/api/admin/seo/:id', requireAdmin, (req, res) => {
-    const entry = pageSeo.find(s => s.id === req.params.id);
-    if (!entry) return res.status(404).json({ success: false, message: 'SEO entry not found' });
-    Object.assign(entry, { ...req.body, updatedAt: new Date().toISOString() });
-    res.json({ success: true, data: entry });
+app.put('/api/admin/seo/:id', requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const entry = await prisma.sEO.update({ where: { id }, data: { ...req.body } });
+        res.json({ success: true, data: entry });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'SEO update failed', error: error.message });
+    }
 });
 
-app.listen(PORT, () => {
-    console.log(`\n  🚀 Elements Backend API Server v3.0 running at:`);
-    console.log(`  → Local:        http://localhost:${PORT}`);
-    console.log(`  → Staff Login:  POST http://localhost:${PORT}/api/auth/staff/login`);
-    console.log(`  → Admin Panel:  http://localhost:${PORT}/api/admin/stats`);
-    console.log(`  → Campaigns:    http://localhost:${PORT}/api/admin/campaigns`);
-    console.log(`  → Settings:     http://localhost:${PORT}/api/admin/settings`);
-    console.log(`  → Customers:    http://localhost:${PORT}/api/admin/customers\n`);
+
+// ==================== HERO SLIDES ====================
+
+// Public: fetch all active slides (used by the frontend homepage)
+app.get('/api/heroslides', async (req, res) => {
+    try {
+        const slides = await prisma.heroSlide.findMany({
+            where: { status: 'active' },
+            orderBy: { order: 'asc' },
+        });
+        res.json({ success: true, data: slides });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to fetch hero slides', error: error.message });
+    }
+});
+
+// Admin: fetch ALL slides (active + inactive)
+app.get('/api/admin/heroslides', requireAdmin, async (req, res) => {
+    try {
+        const slides = await prisma.heroSlide.findMany({
+            orderBy: { order: 'asc' },
+        });
+        res.json({ success: true, data: slides });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to fetch hero slides', error: error.message });
+    }
+});
+
+// Admin: create new slide
+app.post('/api/admin/heroslides', requireAdmin, async (req, res) => {
+    const { title, subtitle, description, image, contextImage, cta, ctaLink, color, highlight, priceRange, status, order } = req.body;
+    if (!title || !image || !cta || !ctaLink) {
+        return res.status(400).json({ success: false, message: 'title, image, cta, and ctaLink are required' });
+    }
+    try {
+        const maxOrder = await prisma.heroSlide.findFirst({ orderBy: { order: 'desc' }, select: { order: true } });
+        const slide = await prisma.heroSlide.create({
+            data: {
+                title: String(title),
+                subtitle: String(subtitle || ''),
+                description: String(description || ''),
+                image: String(image),
+                contextImage: String(contextImage || image),
+                cta: String(cta),
+                ctaLink: String(ctaLink),
+                color: String(color || 'from-[#0a192f] via-[#112240] to-[#1877F2]'),
+                highlight: String(highlight || ''),
+                priceRange: String(priceRange || ''),
+                status: status === 'inactive' ? 'inactive' : 'active',
+                order: order !== undefined ? Number(order) : (maxOrder ? maxOrder.order + 1 : 0),
+            },
+        });
+        res.status(201).json({ success: true, data: slide, message: 'Hero slide created' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to create hero slide', error: error.message });
+    }
+});
+
+// Admin: update slide
+app.put('/api/admin/heroslides/:id', requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const data = {};
+        const body = req.body;
+        if (body.title !== undefined) data.title = String(body.title);
+        if (body.subtitle !== undefined) data.subtitle = String(body.subtitle);
+        if (body.description !== undefined) data.description = String(body.description);
+        if (body.image !== undefined) data.image = String(body.image);
+        if (body.contextImage !== undefined) data.contextImage = String(body.contextImage);
+        if (body.cta !== undefined) data.cta = String(body.cta);
+        if (body.ctaLink !== undefined) data.ctaLink = String(body.ctaLink);
+        if (body.color !== undefined) data.color = String(body.color);
+        if (body.highlight !== undefined) data.highlight = String(body.highlight);
+        if (body.priceRange !== undefined) data.priceRange = String(body.priceRange);
+        if (body.status !== undefined) data.status = body.status === 'inactive' ? 'inactive' : 'active';
+        if (body.order !== undefined) data.order = Number(body.order);
+
+        const slide = await prisma.heroSlide.update({ where: { id }, data });
+        res.json({ success: true, data: slide, message: 'Hero slide updated' });
+    } catch (error) {
+        if (error.code === 'P2025') return res.status(404).json({ success: false, message: 'Hero slide not found' });
+        res.status(500).json({ success: false, message: 'Failed to update hero slide', error: error.message });
+    }
+});
+
+// Admin: toggle active/inactive
+app.patch('/api/admin/heroslides/:id/toggle', requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const slide = await prisma.heroSlide.findUnique({ where: { id } });
+        if (!slide) return res.status(404).json({ success: false, message: 'Hero slide not found' });
+        const updated = await prisma.heroSlide.update({
+            where: { id },
+            data: { status: slide.status === 'active' ? 'inactive' : 'active' },
+        });
+        res.json({ success: true, data: updated });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Toggle failed', error: error.message });
+    }
+});
+
+// Admin: delete slide
+app.delete('/api/admin/heroslides/:id', requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.heroSlide.delete({ where: { id } });
+        res.json({ success: true, message: 'Hero slide deleted' });
+    } catch (error) {
+        if (error.code === 'P2025') return res.status(404).json({ success: false, message: 'Hero slide not found' });
+        res.status(500).json({ success: false, message: 'Failed to delete hero slide', error: error.message });
+    }
+});
+
+// ==================== IMAGE UPLOAD ====================
+
+// POST /api/admin/upload — upload a single image (admin only)
+app.post('/api/admin/upload', requireAdmin, (req, res) => {
+    upload.single('image')(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ success: false, message: 'File too large. Maximum size is 5 MB.' });
+            }
+            return res.status(400).json({ success: false, message: `Upload error: ${err.message}` });
+        }
+        if (err) {
+            return res.status(400).json({ success: false, message: err.message });
+        }
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'No file provided. Send a multipart/form-data request with field name "image".' });
+        }
+
+        const baseUrl = process.env.API_BASE_URL || `http://localhost:${PORT}`;
+        const fileUrl = `${baseUrl}/uploads/${req.file.filename}`;
+
+        console.log(`[UPLOAD] ✅ ${req.file.originalname} → ${req.file.filename} (${(req.file.size / 1024).toFixed(1)} KB)`);
+
+        res.status(201).json({
+            success: true,
+            message: 'Image uploaded successfully',
+            data: {
+                url: fileUrl,
+                filename: req.file.filename,
+                originalName: req.file.originalname,
+                size: req.file.size,
+                mimetype: req.file.mimetype,
+            },
+        });
+    });
+});
+
+// ==================== STARTUP — DB CHECK + LISTEN ====================
+
+
+async function startServer() {
+    // 1. Verify DATABASE_URL is set
+    if (!process.env.DATABASE_URL) {
+        console.error('\n  ❌ FATAL: DATABASE_URL is not set in .env');
+        console.error('  → Add:  DATABASE_URL="postgresql://USER:PASS@HOST:5432/DB_NAME?schema=public"');
+        console.error('  → See backend/.env for the template.\n');
+        process.exit(1);
+    }
+
+    // 2. Test DB connectivity
+    try {
+        await prisma.$connect();
+        const count = await prisma.product.count();
+        console.log(`\n  ✅ Database connected. Products in DB: ${count}`);
+    } catch (err) {
+        console.error('\n  ❌ Database connection FAILED:', err.message);
+        console.error('  → Check that PostgreSQL is running and DATABASE_URL is correct.');
+        console.error('  → Run:  npx prisma migrate dev  OR  npx prisma db push  (first time setup)');
+        console.error('  → Current DATABASE_URL:', process.env.DATABASE_URL, '\n');
+        process.exit(1);
+    }
+
+    // 3. Start HTTP server
+    app.listen(PORT, () => {
+        console.log(`\n  🚀 Elements Backend API Server v3.0 running at:`);
+        console.log(`  → Local:        http://localhost:${PORT}`);
+        console.log(`  → Products API: GET  http://localhost:${PORT}/api/products`);
+        console.log(`  → Create Prod:  POST http://localhost:${PORT}/api/products`);
+        console.log(`  → Admin Panel:  http://localhost:${PORT}/api/admin/stats`);
+        console.log(`  → Staff Login:  POST http://localhost:${PORT}/api/auth/staff/login\n`);
+    });
+}
+
+startServer().catch(err => {
+    console.error('Startup error:', err);
+    process.exit(1);
 });

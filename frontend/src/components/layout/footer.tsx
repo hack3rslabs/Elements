@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Phone, Mail, MapPin, Facebook, Instagram, Twitter, Youtube, Award } from "lucide-react";
+import { Phone, Mail, Facebook, Instagram, Twitter, Youtube, Award } from "lucide-react";
 
 export function Footer() {
     return (
@@ -70,12 +70,14 @@ export function Footer() {
                         <h4 className="font-semibold text-white mb-4 text-sm uppercase tracking-wider">Categories</h4>
                         <ul className="space-y-2.5">
                             {[
-                                { name: "Kitchen Sinks", href: "/category/kitchen-sinks" },
-                                { name: "Floor Guard Sheets", href: "/category/floor-guard-sheets" },
-                                { name: "Mitti Magic Elevations", href: "/category/mitti-magic" },
-                                { name: "Printed Tiles", href: "/category/printed-tiles" },
-                                { name: "Wall Tiles", href: "/category/wall-tiles" },
-                                { name: "Exterior Cladding", href: "/category/exterior-cladding" },
+                                { name: "Kitchen Sinks", href: "/category/kitchen" },
+                                { name: "Artificial Grass", href: "/category/artificial-grass" },
+                                { name: "Aluminium Insulation", href: "/category/aluminium-insulation" },
+                                { name: "Manhole Covers", href: "/category/manhole-covers" },
+                                { name: "Terracota Products", href: "/category/terracota-products" },
+                                { name: "Tile Adhesive & Epoxy", href: "/category/tile-adhesive-epoxy" },
+                                { name: "PVD Profiles & Sheets", href: "/category/pvd-profiles-sheets" },
+                                { name: "Floor Protection", href: "/category/floor-protection" },
                             ].map((link) => (
                                 <li key={link.name}>
                                     <Link href={link.href} className="text-sm text-gray-400 hover:text-[#1877F2] transition-colors">
@@ -150,10 +152,9 @@ export function Footer() {
                         © 2026 Sree Kameswari Hindustan Elements. All rights reserved. | GST: XXXXXXXXXXXX
                     </p>
                     <div className="flex gap-4 text-xs text-gray-500">
-                        <Link href="/privacy" className="hover:text-gray-300 transition-colors">Privacy Policy</Link>
-                        <Link href="/terms" className="hover:text-gray-300 transition-colors">Terms & Conditions</Link>
-                        <Link href="/shipping" className="hover:text-gray-300 transition-colors">Shipping Policy</Link>
-                        <Link href="/returns" className="hover:text-gray-300 transition-colors">Return Policy</Link>
+
+                        <Link href="/https://twiis.in/" className="hover:text-gray-300 transition-colors">Developed by TWIIS INNOVATIONS </Link>
+                        
                     </div>
                 </div>
             </div>

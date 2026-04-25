@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { MessageCircle, X, Send, Bot, User, Phone, Loader2 } from "lucide-react";
 import Link from "next/link";
 
@@ -97,7 +98,7 @@ export function AIAssistant() {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    const handleSend = (text?: string) => {
+    const handleSend = useCallback((text?: string) => {
         const query = text || input.trim();
         if (!query) return;
 
@@ -112,7 +113,7 @@ export function AIAssistant() {
             setMessages(prev => [...prev, response]);
             setTyping(false);
         }, 800 + Math.random() * 700);
-    };
+    }, [input, products]);
 
     return (
         <>
@@ -171,7 +172,7 @@ export function AIAssistant() {
                                                     className="flex items-center gap-3 bg-white rounded-xl p-2.5 border shadow-sm hover:shadow-md transition-all"
                                                 >
                                                     <div className="h-12 w-12 bg-gray-100 rounded-lg overflow-hidden shrink-0 relative">
-                                                        <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                                                        <Image src={p.image} alt={p.name} fill className="object-cover" />
                                                     </div>
                                                     <div className="flex-1 min-w-0 text-left">
                                                         <p className="text-xs font-medium truncate">{p.name}</p>

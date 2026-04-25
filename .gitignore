@@ -1,0 +1,7 @@
+# IDE config
+.vscode/
+.idea/
+
+# OS config
+.DS_Store
+Thumbs.db

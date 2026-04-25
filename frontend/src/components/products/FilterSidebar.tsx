@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Check, ChevronDown, ChevronUp, Star, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { Check, ChevronDown, ChevronUp, Star } from "lucide-react";
 
 interface Facets {
     materials: string[];
@@ -13,8 +12,8 @@ interface Facets {
 
 interface FilterSidebarProps {
     facets: Facets | null;
-    activeFilters: any;
-    onFilterChange: (filters: any) => void;
+    activeFilters: Record<string, any>;
+    onFilterChange: (filters: Record<string, any>) => void;
     onClearAll: () => void;
 }
 

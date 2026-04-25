@@ -33,43 +33,46 @@ export function Header() {
     }, []);
 
     useEffect(() => {
-        if (searchQuery.length < 2) { setSearchResults([]); return; }
+        let mounted = true;
+        if (searchQuery.length < 2) {
+            setTimeout(() => {
+                if (mounted) setSearchResults([]);
+            }, 0);
+            return () => { mounted = false; };
+        }
         const timer = setTimeout(async () => {
             try {
                 const res = await fetch(`http://localhost:5000/api/search?q=${encodeURIComponent(searchQuery)}`);
                 const data = await res.json();
-                if (data.success) setSearchResults(data.data.products.slice(0, 5));
+                if (mounted && data.success) setSearchResults(data.data.products.slice(0, 5));
             } catch { /* silent */ }
         }, 300);
-        return () => clearTimeout(timer);
+        return () => {
+            mounted = false;
+            clearTimeout(timer);
+        };
     }, [searchQuery]);
 
-    const navCategories = [
-        {
-            name: "Kitchen", href: "/category/kitchen", children: [
-                { name: "Kitchen Sinks", href: "/category/kitchen-sinks" },
-                { name: "Kitchen Accessories", href: "/category/kitchen-accessories" },
-            ]
-        },
-        {
-            name: "Flooring", href: "/category/flooring", children: [
-                { name: "Floor Guard Sheets", href: "/category/floor-guard-sheets" },
-                { name: "Floor Accessories", href: "/category/floor-accessories" },
-            ]
-        },
-        {
-            name: "Elevation", href: "/category/elevation", children: [
-                { name: "Mitti Magic", href: "/category/mitti-magic" },
-                { name: "Exterior Cladding", href: "/category/exterior-cladding" },
-            ]
-        },
-        {
-            name: "Tiles", href: "/category/tiles", children: [
-                { name: "Wall Tiles", href: "/category/wall-tiles" },
-                { name: "Floor Tiles", href: "/category/floor-tiles" },
-                { name: "Printed Tiles", href: "/category/printed-tiles" },
-            ]
-        },
+    const navCategories: { name: string; href: string; children?: { name: string; href: string }[] }[] = [
+        // {
+        //     name: "Kitchen Sinks", href: "/", children: [
+        //         { name: "Quartz Sinks", href: "/category/quartz-sinks" },
+        //         { name: "Handmade Sinks", href: "/category/handmade-sinks" },
+        //         { name: "Multi Functional Sinks", href: "/category/multi-functional-sinks" },
+        //     ]
+        // },
+        // {
+        //     name: "Manhole Covers", href: "/", children: [
+        //         { name: "Commercial Metrocover", href: "/category/comercial" },
+        //         { name: "Domestic Truecover", href: "/category/domestic" },
+        //     ]
+        // },
+        // {
+        //     name: "Elevation", href: "/category/terracota-products", children: [
+        //         { name: "Mitti Magic", href: "/category/terracota-products" },
+        //         { name: "Exterior Cladding", href: "/category/terracota-products" },
+        //     ]
+        // },
     ];
 
     return (
@@ -82,15 +85,13 @@ export function Header() {
                             ⭐ 15+ Years of Trust
                         </span>
                         <a href="tel:+919876543210" className="flex items-center gap-1 hover:text-blue-200 transition-colors">
-                            <Phone className="h-3 w-3" /> +91 98765 43210
+                            <Phone className="h-3 w-3" /> +91 9995552252
                         </a>
-                        <a href="mailto:support@hindustan-elements.com" className="flex items-center gap-1 hover:text-blue-200 transition-colors">
-                            <Mail className="h-3 w-3" /> support@hindustan-elements.com
+                        <a href="mailto:skceramics999@gmail.com" className="flex items-center gap-1 hover:text-blue-200 transition-colors">
+                            <Mail className="h-3 w-3" /> skceramics999@gmail.com
                         </a>
                     </div>
                     <div className="flex items-center gap-4">
-                        <span>Free Shipping on Orders ₹5,000+</span>
-                        <span>|</span>
                         <Link href="/login" className="hover:text-blue-200 transition-colors">Login</Link>
                         <Link href="/register" className="hover:text-blue-200 transition-colors">Register</Link>
                     </div>
@@ -137,7 +138,7 @@ export function Header() {
                                 {/* Dropdown */}
                                 <div className="absolute left-0 top-full pt-1 invisible group-hover:visible opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300 ease-out z-50">
                                     <div className="bg-white rounded-xl shadow-xl border p-2 min-w-[200px]">
-                                        {cat.children.map((child) => (
+                                        {cat.children?.map((child) => (
                                             <Link
                                                 key={child.name}
                                                 href={child.href}
@@ -175,8 +176,8 @@ export function Header() {
                                             className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-lg transition-colors"
                                             onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
                                         >
-                                            <div className="h-10 w-10 bg-muted rounded-lg overflow-hidden shrink-0">
-                                                <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                                            <div className="h-10 w-10 bg-muted rounded-lg overflow-hidden shrink-0 relative">
+                                                <Image src={p.image} alt={p.name} fill className="object-cover" />
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium truncate">{p.name}</p>
@@ -225,7 +226,7 @@ export function Header() {
                                     >
                                         {cat.name}
                                     </Link>
-                                    {cat.children.map((child) => (
+                                    {cat.children?.map((child) => (
                                         <Link
                                             key={child.name}
                                             href={child.href}

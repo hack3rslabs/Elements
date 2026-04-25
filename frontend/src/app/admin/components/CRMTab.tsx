@@ -31,7 +31,7 @@ const STATUS_OPTIONS = [
 
 const SOURCE_OPTIONS = ['all', 'website', 'website_contact', 'indiamart', 'amazon', 'flipkart', 'meesho', 'meta', 'google_business', 'manual', 'webhook'];
 
-const getStatusStyle = (status: string) => STATUS_OPTIONS.find(s => s.value === status)?.color || 'bg-gray-100 text-gray-600';
+const getStatusStyle = (status: string) => STATUS_OPTIONS.find(s => s.value === status?.toLowerCase())?.color || 'bg-gray-100 text-gray-600';
 
 const getSourceIcon = (source: string) => {
     const icons: Record<string, string> = {
@@ -195,7 +195,7 @@ export default function CRMTab() {
 
     // Stats
     const statusCounts = STATUS_OPTIONS.map(s => ({
-        ...s, count: leads.filter(l => l.status === s.value).length,
+        ...s, count: leads.filter(l => (l.status || '').toLowerCase() === s.value).length,
     }));
 
     return (
@@ -340,7 +340,7 @@ export default function CRMTab() {
                                     </div>
                                     <div className="flex flex-col items-end gap-2 shrink-0">
                                         {/* Status dropdown */}
-                                        <select value={lead.status} onChange={e => handleStatusChange(lead.id, e.target.value)}
+                                        <select value={(lead.status || 'new').toLowerCase()} onChange={e => handleStatusChange(lead.id, e.target.value)}
                                             className="text-[10px] border rounded-lg px-2 py-1 bg-white focus:outline-none" aria-label="Change lead status">
                                             {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                                         </select>
@@ -410,8 +410,10 @@ export default function CRMTab() {
                                                     <input type="datetime-local" value={followUpForm.scheduledAt} onChange={e => setFollowUpForm(f => ({ ...f, scheduledAt: e.target.value }))}
                                                         className="w-full h-7 rounded-lg border px-2 text-[10px]" />
                                                     <select value={followUpForm.type} onChange={e => setFollowUpForm(f => ({ ...f, type: e.target.value }))} className="w-full h-7 rounded-lg border px-2 text-[10px] bg-white" aria-label="Follow-up type">
-                                                        <option value="call">📞 Call</option><option value="email">📧 Email</option>
-                                                        <option value="meeting">🤝 Meeting</option><option value="whatsapp">💬 WhatsApp</option>
+                                                        <option value="call">📞 Call</option>
+                                                        <option value="email">📧 Email</option>
+                                                        <option value="meeting">🤝 Meeting</option>
+                                                        <option value="whatsapp">💬 WhatsApp</option>
                                                         <option value="visit">🏠 Site Visit</option>
                                                     </select>
                                                     <input value={followUpForm.note} onChange={e => setFollowUpForm(f => ({ ...f, note: e.target.value }))} className="w-full h-7 rounded-lg border px-2 text-[10px]" placeholder="Short note..." />

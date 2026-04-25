@@ -17,59 +17,13 @@ import { motion } from "framer-motion";
 
 export default function LoginPage() {
     const router = useRouter();
-    const [loginType, setLoginType] = useState<"email" | "mobile">("email");
     const [loading, setLoading] = useState(false);
-
-    // Email Auth State
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
 
     // Mobile Auth State
     const [phone, setPhone] = useState("");
     const [otp, setOtp] = useState("");
     const [otpSent, setOtpSent] = useState(false);
     const [error, setError] = useState("");
-
-    const handleEmailLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError("");
-        try {
-            const res = await signIn("credentials", {
-                email,
-                password,
-                redirect: false,
-            });
-
-            console.log("[Login] signIn response:", res);
-
-            if (res?.error) {
-                setError(res.error === "CredentialsSignin"
-                    ? "Invalid email or password. Try admin@elements.com / password123"
-                    : `Login failed: ${res.error}`);
-            } else if (res?.ok) {
-                const session = await getSession();
-                const params = new URLSearchParams(window.location.search);
-                const callbackUrl = params.get("callbackUrl");
-
-                if (callbackUrl && callbackUrl !== window.location.pathname) {
-                    router.push(callbackUrl);
-                } else if (session?.user?.role === "ADMIN" || session?.user?.role === "STAFF") {
-                    router.push("/admin");
-                } else {
-                    router.push("/");
-                }
-                router.refresh();
-            } else {
-                setError("Login failed. Please try again.");
-            }
-        } catch (err) {
-            console.error("[Login] Error:", err);
-            setError("Network error. Please check your connection.");
-        }
-        setLoading(false);
-    };
 
     const handleRequestOtp = async () => {
         if (!phone || phone.length < 10) {
@@ -82,7 +36,7 @@ export default function LoginPage() {
             const res = await fetch("http://localhost:5000/api/auth/otp/send", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ phone }),
+                body: JSON.stringify({ phone: `+91${phone}` }),
             });
             const data = await res.json();
             if (data.success) {
@@ -101,7 +55,7 @@ export default function LoginPage() {
         setLoading(true);
         setError("");
         const res = await signIn("credentials", {
-            phone,
+            phone: `+91${phone}`,
             otp,
             type: "mobile",
             redirect: false,
@@ -176,24 +130,8 @@ export default function LoginPage() {
                             {/* Right Side: Login Form */}
                             <div className="md:w-3/5 p-8 md:p-10">
                                 <div className="mb-8">
-                                    <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
-                                    <p className="text-gray-500 text-sm mt-1">Sign in to your account</p>
-                                </div>
-
-                                {/* Login Tabs */}
-                                <div className="flex p-1 bg-gray-100 rounded-2xl mb-8">
-                                    <button
-                                        onClick={() => { setLoginType("email"); setError(""); }}
-                                        className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${loginType === "email" ? 'bg-white shadow text-[#1877F2]' : 'text-gray-500 hover:text-gray-700'}`}
-                                    >
-                                        Email
-                                    </button>
-                                    <button
-                                        onClick={() => { setLoginType("mobile"); setError(""); }}
-                                        className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${loginType === "mobile" ? 'bg-white shadow text-[#1877F2]' : 'text-gray-500 hover:text-gray-700'}`}
-                                    >
-                                        Mobile / OTP
-                                    </button>
+                                    <h1 className="text-2xl font-bold text-gray-900">Sign In</h1>
+                                    <p className="text-gray-500 text-sm mt-1">Enter your phone number to continue</p>
                                 </div>
 
                                 {error && (
@@ -202,139 +140,75 @@ export default function LoginPage() {
                                     </div>
                                 )}
 
-                                {loginType === "email" ? (
-                                    <form onSubmit={handleEmailLogin} className="space-y-4">
-                                        <div className="space-y-1">
-                                            <div className="relative group">
-                                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-[#1877F2] transition-colors" />
-                                                <input
-                                                    required
-                                                    type="email"
-                                                    placeholder="name@company.com"
-                                                    value={email}
-                                                    onChange={e => setEmail(e.target.value)}
-                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-11 pr-4 py-3.5 text-sm outline-none focus:ring-4 focus:ring-[#1877F2]/10 focus:border-[#1877F2] transition-all"
-                                                />
+                                <div className="space-y-4">
+                                    {!otpSent ? (
+                                        <>
+                                            <div className="space-y-1">
+                                                <div className="relative group">
+                                                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-[#1877F2] transition-colors" />
+                                                    <div className="absolute left-10 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">+91</div>
+                                                    <input
+                                                        required
+                                                        type="tel"
+                                                        maxLength={10}
+                                                        placeholder="Phone Number"
+                                                        value={phone}
+                                                        onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
+                                                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-20 pr-4 py-3.5 text-sm outline-none focus:ring-4 focus:ring-[#1877F2]/10 focus:border-[#1877F2] transition-all"
+                                                    />
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <div className="relative group">
-                                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-[#1877F2] transition-colors" />
-                                                <input
-                                                    required
-                                                    type={showPassword ? "text" : "password"}
-                                                    placeholder="Password"
-                                                    value={password}
-                                                    onChange={e => setPassword(e.target.value)}
-                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-11 pr-12 py-3.5 text-sm outline-none focus:ring-4 focus:ring-[#1877F2]/10 focus:border-[#1877F2] transition-all"
-                                                />
+                                            <Button
+                                                onClick={handleRequestOtp}
+                                                disabled={loading || phone.length < 10}
+                                                className="w-full bg-[#1877F2] hover:bg-[#0d47a1] rounded-2xl h-14 text-sm font-bold shadow-xl shadow-blue-200 mt-4"
+                                            >
+                                                {loading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Send OTP"}
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <form onSubmit={handleMobileLogin} className="space-y-4 animate-in fade-in slide-in-from-right-4">
+                                            <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center gap-3">
+                                                <Smartphone className="h-5 w-5 text-[#1877F2]" />
+                                                <div className="flex-1">
+                                                    <p className="text-[10px] uppercase font-bold text-gray-400">OTP Sent to</p>
+                                                    <p className="text-xs font-bold text-gray-700">+91 {phone}</p>
+                                                </div>
                                                 <button
                                                     type="button"
-                                                    onClick={() => setShowPassword(!showPassword)}
-                                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                                    onClick={() => setOtpSent(false)}
+                                                    className="text-[10px] font-bold text-[#1877F2] hover:underline"
                                                 >
-                                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                    Change
                                                 </button>
                                             </div>
-                                        </div>
-                                        <div className="flex justify-end pt-1">
-                                            <a href="#" className="text-xs font-bold text-[#1877F2] hover:underline">Forgot password?</a>
-                                        </div>
-                                        <Button
-                                            type="submit"
-                                            disabled={loading}
-                                            className="w-full bg-[#1877F2] hover:bg-[#0d47a1] rounded-2xl h-14 text-sm font-bold shadow-xl shadow-blue-200 mt-4"
-                                        >
-                                            {loading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Sign In"}
-                                        </Button>
-                                    </form>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {!otpSent ? (
-                                            <>
-                                                <div className="space-y-1">
-                                                    <div className="relative group">
-                                                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-[#1877F2] transition-colors" />
-                                                        <div className="absolute left-10 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">+91</div>
-                                                        <input
-                                                            required
-                                                            type="tel"
-                                                            maxLength={10}
-                                                            placeholder="Phone Number"
-                                                            value={phone}
-                                                            onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
-                                                            className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-20 pr-4 py-3.5 text-sm outline-none focus:ring-4 focus:ring-[#1877F2]/10 focus:border-[#1877F2] transition-all"
-                                                        />
-                                                    </div>
+                                            <div className="space-y-1">
+                                                <div className="relative group">
+                                                    <input
+                                                        required
+                                                        autoFocus
+                                                        type="text"
+                                                        maxLength={6}
+                                                        placeholder="Enter 6-digit OTP"
+                                                        value={otp}
+                                                        onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
+                                                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3.5 text-center text-xl font-bold tracking-[0.5em] outline-none focus:ring-4 focus:ring-[#1877F2]/10 focus:border-[#1877F2] transition-all"
+                                                    />
                                                 </div>
-                                                <Button
-                                                    onClick={handleRequestOtp}
-                                                    disabled={loading || phone.length < 10}
-                                                    className="w-full bg-[#1877F2] hover:bg-[#0d47a1] rounded-2xl h-14 text-sm font-bold shadow-xl shadow-blue-200 mt-4"
-                                                >
-                                                    {loading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Send OTP"}
-                                                </Button>
-                                            </>
-                                        ) : (
-                                            <form onSubmit={handleMobileLogin} className="space-y-4 animate-in fade-in slide-in-from-right-4">
-                                                <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center gap-3">
-                                                    <Smartphone className="h-5 w-5 text-[#1877F2]" />
-                                                    <div className="flex-1">
-                                                        <p className="text-[10px] uppercase font-bold text-gray-400">OTP Sent to</p>
-                                                        <p className="text-xs font-bold text-gray-700">+91 {phone}</p>
-                                                    </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setOtpSent(false)}
-                                                        className="text-[10px] font-bold text-[#1877F2] hover:underline"
-                                                    >
-                                                        Change
-                                                    </button>
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <div className="relative group">
-                                                        <input
-                                                            required
-                                                            autoFocus
-                                                            type="text"
-                                                            maxLength={6}
-                                                            placeholder="Enter 6-digit OTP"
-                                                            value={otp}
-                                                            onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
-                                                            className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3.5 text-center text-xl font-bold tracking-[0.5em] outline-none focus:ring-4 focus:ring-[#1877F2]/10 focus:border-[#1877F2] transition-all"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <Button
-                                                    type="submit"
-                                                    disabled={loading || otp.length < 6}
-                                                    className="w-full bg-[#1877F2] hover:bg-[#0d47a1] rounded-2xl h-14 text-sm font-bold shadow-xl shadow-blue-200 mt-4"
-                                                >
-                                                    {loading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Verify & Sign In"}
-                                                </Button>
-                                                <p className="text-center text-[10px] text-gray-400">
-                                                    Didn&apos;t receive? <button type="button" onClick={handleRequestOtp} className="text-[#1877F2] font-bold hover:underline">Resend in 30s</button>
-                                                </p>
-                                            </form>
-                                        )}
-                                    </div>
-                                )}
-
-                                <div className="relative my-8">
-                                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t"></div></div>
-                                    <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest"><span className="bg-white px-4 text-gray-400">Or continue with</span></div>
+                                            </div>
+                                            <Button
+                                                type="submit"
+                                                disabled={loading || otp.length < 6}
+                                                className="w-full bg-[#1877F2] hover:bg-[#0d47a1] rounded-2xl h-14 text-sm font-bold shadow-xl shadow-blue-200 mt-4"
+                                            >
+                                                {loading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Verify & Sign In"}
+                                            </Button>
+                                            <p className="text-center text-[10px] text-gray-400">
+                                                Didn&apos;t receive? <button type="button" onClick={handleRequestOtp} className="text-[#1877F2] font-bold hover:underline">Resend OTP</button>
+                                            </p>
+                                        </form>
+                                    )}
                                 </div>
-
-                                {/* Google Login Button */}
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => signIn("google")}
-                                    className="w-full rounded-2xl h-14 border-2 hover:bg-gray-50 flex items-center justify-center gap-3 transition-all"
-                                >
-                                    <Image src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" width={20} height={20} />
-                                    <span className="text-sm font-bold text-gray-700">Continue with Google</span>
-                                </Button>
 
                                 <div className="mt-8 text-center text-xs text-gray-500">
                                     Don&apos;t have an account?{" "}
@@ -346,8 +220,8 @@ export default function LoginPage() {
 
                     <p className="text-center text-[10px] text-gray-400 mt-8 leading-relaxed max-w-xs mx-auto">
                         Test Credentials: <span className="font-bold">admin@elements.com</span> / <span className="font-bold">password123</span>
-                        <br />
-                        For Mobile use any 10 digits and <span className="font-bold">123456</span>
+                    <br />
+                    Secure OTP will be sent to your mobile number.
                     </p>
                 </div>
             </main>

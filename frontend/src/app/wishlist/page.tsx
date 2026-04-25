@@ -7,7 +7,7 @@ import { useStore } from "@/lib/store";
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, ShoppingCart, Trash2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface WishlistProduct {
     id: string;
@@ -31,7 +31,7 @@ export default function WishlistPage() {
         return localStorage.getItem('elements_session_id') || 'default';
     };
 
-    const fetchWishlist = async () => {
+    const fetchWishlist = useCallback(async () => {
         try {
             const res = await fetch('http://localhost:5000/api/wishlist', {
                 headers: { 'x-session-id': getSessionId() }
@@ -40,9 +40,15 @@ export default function WishlistPage() {
             if (data.success) setProducts(data.data);
         } catch { /* silent */ }
         setLoading(false);
-    };
+    }, []);
 
-    useEffect(() => { fetchWishlist(); }, []);
+    useEffect(() => {
+        let mounted = true;
+        if (mounted) {
+            void fetchWishlist();
+        }
+        return () => { mounted = false; };
+    }, [fetchWishlist]);
 
     const handleRemove = async (productId: string) => {
         await toggleWishlist(productId);

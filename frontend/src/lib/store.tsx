@@ -46,12 +46,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const [cartLoading, setCartLoading] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
         setToast({ message, type });
         setTimeout(() => setToast(null), 3000);
-    };
+    }, []);
 
-    const getSessionId = () => {
+    const getSessionId = useCallback(() => {
         if (typeof window === 'undefined') return 'ssr';
         let sessionId = localStorage.getItem('elements_session_id');
         if (!sessionId) {
@@ -59,23 +59,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             localStorage.setItem('elements_session_id', sessionId);
         }
         return sessionId;
-    };
+    }, []);
 
-    const apiCall = async (endpoint: string, options: RequestInit = {}) => {
+    const apiCall = useCallback(async (endpoint: string, options: RequestInit = {}) => {
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
             'x-session-id': getSessionId(),
         };
-        const res = await fetch(`http://localhost:5000/api${endpoint}`, { ...options, headers });
+        const res = await fetch(`/api${endpoint}`, { ...options, headers });
         return res.json();
-    };
+    }, [getSessionId]);
 
     const refreshCart = useCallback(async () => {
         try {
             const data = await apiCall('/cart');
             if (data.success) setCart(data.data);
         } catch { /* silent */ }
-    }, []);
+    }, [apiCall]);
 
     const addToCartFn = useCallback(async (productId: string, quantity = 1) => {
         setCartLoading(true);
@@ -87,14 +87,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             }
         } catch { showToast('Failed to add to cart', 'error'); }
         setCartLoading(false);
-    }, [refreshCart]);
+    }, [apiCall, refreshCart, showToast]);
 
     const updateCartQuantity = useCallback(async (productId: string, quantity: number) => {
         try {
             await apiCall(`/cart/${productId}`, { method: 'PUT', body: JSON.stringify({ quantity }) });
             await refreshCart();
         } catch { showToast('Failed to update cart', 'error'); }
-    }, [refreshCart]);
+    }, [apiCall, refreshCart, showToast]);
 
     const removeFromCartFn = useCallback(async (productId: string) => {
         try {
@@ -102,7 +102,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             await refreshCart();
             showToast('Removed from cart');
         } catch { showToast('Failed to remove item', 'error'); }
-    }, [refreshCart]);
+    }, [apiCall, refreshCart, showToast]);
 
     const toggleWishlist = useCallback(async (productId: string) => {
         try {
@@ -116,16 +116,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                 showToast('Added to wishlist! ❤️');
             }
         } catch { showToast('Failed to update wishlist', 'error'); }
-    }, [wishlist]);
+    }, [wishlist, apiCall, showToast]);
 
     const isInWishlist = useCallback((productId: string) => wishlist.includes(productId), [wishlist]);
 
     useEffect(() => {
-        refreshCart();
-        apiCall('/wishlist').then(data => {
-            if (data.success) setWishlist(data.data.map((p: { id: string }) => p.id));
-        }).catch(() => { });
-    }, [refreshCart]);
+        let mounted = true;
+        const loadInitialData = async () => {
+            try {
+                await refreshCart();
+                const data = await apiCall('/wishlist');
+                if (mounted && data.success) {
+                    setWishlist(data.data.map((p: { id: string }) => p.id));
+                }
+            } catch { /* silent */ }
+        };
+        loadInitialData();
+        return () => { mounted = false; };
+    }, [refreshCart, apiCall]);
 
     return (
         <StoreContext.Provider value={{

@@ -8,7 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
-import { Star, SlidersHorizontal, Grid3X3, LayoutList, Heart, Filter } from "lucide-react";
+import { Star, SlidersHorizontal, Grid3X3, LayoutList, Heart, Filter, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ScrollReveal } from "@/components/ui/scroll-reveal";
 import { FilterSidebar } from "@/components/products/FilterSidebar";
@@ -151,7 +151,7 @@ export default function CategoryPage() {
             <Header />
             <main className="flex-1 bg-gray-50 pb-20">
                 {/* Category Banner */}
-                <section className="relative bg-gradient-to-r from-[#0d47a1] to-[#1877F2] py-20 overflow-hidden">
+                <section className="relative bg-gradient-to-r from-[#0d47a1] to-[#1877F2] py-5 overflow-hidden">
                     <div className="absolute inset-0 bg-[url('/images/products/k%20s%202.jpg')] bg-cover bg-center opacity-10"></div>
                     <div className="container relative z-10 text-white">
                         <nav className="flex items-center gap-2 text-sm text-white/60 mb-6 animate-fade-up">
@@ -160,17 +160,17 @@ export default function CategoryPage() {
                             <span className="text-white font-medium">{category?.name || slug}</span>
                         </nav>
                         <ScrollReveal direction="up">
-                            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">{category?.name || slug}</h1>
+                            <h1 className="text-xl md:text-3xl font-extrabold tracking-tight">{category?.name || slug}</h1>
                         </ScrollReveal>
                         {category?.description && (
                             <ScrollReveal direction="up" delay={0.15}>
-                                <p className="text-white/80 mt-4 text-xl max-w-2xl leading-relaxed">{category.description}</p>
+                                <p className="text-white/80 mt-4 text-sm max-w-sm leading-relaxed">{category.description}</p>
                             </ScrollReveal>
                         )}
-                        <ScrollReveal direction="up" delay={0.25}>
+                            <ScrollReveal direction="up" delay={0.25}>
                             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mt-8">
                                 <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse"></span>
-                                <span className="text-white/90 text-sm font-medium">{products.length} Premium Products Available</span>
+                                <span className="text-white/90 text-sm font-medium">{products.length}  Products Available</span>
                             </div>
                         </ScrollReveal>
                     </div>
@@ -191,7 +191,7 @@ export default function CategoryPage() {
                         {/* Main Content */}
                         <div className="flex-1">
                             {/* Toolbar */}
-                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 bg-white rounded-2xl p-5 shadow-sm border">
+                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 bg-white rounded-2xl shadow-sm border">
                                 <div className="flex items-center gap-4 w-full md:w-auto">
                                     <Button 
                                         variant="outline" 
@@ -370,8 +370,8 @@ function GridProductCard({ product, onAddToCart, onToggleWishlist, inWishlist }:
     const discount = product.mrp > product.price ? Math.round(((product.mrp - product.price) / product.mrp) * 100) : 0;
 
     return (
-        <div className="group relative overflow-hidden rounded-[2rem] border bg-white shadow-sm hover:shadow-2xl transition-all duration-500 border-gray-100 hover:border-transparent">
-            <div className="aspect-[4/5] relative overflow-hidden bg-gray-50">
+        <div className="group relative flex flex-col h-full overflow-hidden rounded-[2rem] border bg-white shadow-sm hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 border-gray-100 hover:border-transparent">
+            <div className="aspect-[4/5] relative shrink-0 overflow-hidden bg-gray-50">
                 <Image src={product.images?.[0] || '/images/products/kicjen sunk 1.webp'} alt={product.name} fill className="object-cover transition-transform duration-1000 group-hover:scale-110" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 
@@ -400,22 +400,25 @@ function GridProductCard({ product, onAddToCart, onToggleWishlist, inWishlist }:
                 )}
             </div>
 
-            <div className="p-6">
+            <div className="p-6 flex-1 flex flex-col">
                 <div className="flex items-center justify-between mb-2">
                     <p className="text-[10px] text-[#1877F2] font-black uppercase tracking-[0.2em]">{product.categoryName}</p>
-                    {product.rating > 0 && (
-                        <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-md">
+                    {product.rating > 0 ? (
+                        <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-md min-h-[24px]">
                             <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                             <span className="text-[10px] font-bold text-amber-900">{product.rating}</span>
                         </div>
+                    ) : (
+                        <div className="min-h-[24px]"></div>
                     )}
                 </div>
                 
-                <h3 className="font-bold text-lg text-gray-900 leading-tight line-clamp-2 min-h-[56px] group-hover:text-[#1877F2] transition-colors">
+                <h3 className="font-bold text-lg text-gray-900 leading-tight group-hover:text-[#1877F2] transition-colors">
                     <Link href={`/product/${product.slug}`}>{product.name}</Link>
                 </h3>
 
-                <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-50">
+                <div className="mt-auto">
+                    <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-50">
                     <div className="flex flex-col">
                         <span className="text-2xl font-black text-gray-900">₹{product.price.toLocaleString("en-IN")}</span>
                         {product.mrp > product.price && (
@@ -428,7 +431,8 @@ function GridProductCard({ product, onAddToCart, onToggleWishlist, inWishlist }:
                         className="bg-[#1877F2] hover:bg-black rounded-2xl h-12 px-6 text-sm font-bold shadow-xl shadow-blue-500/20 active:scale-95 transition-all"
                     >
                         Add to bag
-                    </Button>
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -439,7 +443,7 @@ function ListProductCard({ product, onAddToCart, onToggleWishlist, inWishlist }:
     const discount = product.mrp > product.price ? Math.round(((product.mrp - product.price) / product.mrp) * 100) : 0;
 
     return (
-        <div className="flex flex-col sm:flex-row gap-8 bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all p-6 group">
+        <div className="flex flex-col sm:flex-row gap-8 bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-2xl hover:scale-[1.01] active:scale-[0.99] transition-all p-6 group">
             <div className="w-full sm:w-56 aspect-square relative shrink-0 rounded-2xl overflow-hidden bg-gray-50">
                 <Image src={product.images?.[0] || '/images/products/kicjen sunk 1.webp'} alt={product.name} fill className="object-cover transition-transform duration-700 group-hover:scale-110" />
                 {discount > 0 && (

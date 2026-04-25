@@ -30,7 +30,7 @@ export function AnalyticsTracker() {
                         }
                     })
                 });
-            } catch (e) {
+            } catch {
                 // Background tracking, fail silently
             }
         };

@@ -23,16 +23,32 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
       <body className={`${inter.className} antialiased`}>
         <AuthProvider>
           <AnalyticsHead />
           <StoreProvider>
-            {children}
+
+          
+            <div className="min-h-screen flex flex-col">
+              
+              {/* FULL WIDTH HEADER (keep outside container if needed) */}
+              {/* If header inside pages, ignore this */}
+
+              {/* CENTERED CONTENT */}
+              <main className="flex-1">
+              {children}
+              </main>
+
+              {/* Optional Footer */}
+              {/* <Footer /> */}
+
+            </div>
+
             <GlobalWidgets />
           </StoreProvider>
         </AuthProvider>
@@ -40,3 +56,4 @@ export default function RootLayout({
     </html>
   );
 }
+

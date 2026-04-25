@@ -13,7 +13,7 @@ declare global {
         webkitSpeechRecognition: any;
     }
 }
-type SpeechRecognitionType = any;
+type SpeechRecognitionType = Window['SpeechRecognition'] | Window['webkitSpeechRecognition'];
 
 interface SearchResult {
     name: string;
@@ -35,10 +35,12 @@ export function VoiceSearchModal({ open, onClose }: { open: boolean; onClose: ()
 
     useEffect(() => {
         if (!open) {
-            setTranscript("");
-            setResults([]);
-            setError("");
-            setListening(false);
+            setTimeout(() => {
+                setTranscript("");
+                setResults([]);
+                setError("");
+                setListening(false);
+            }, 0);
         }
     }, [open]);
 
@@ -54,7 +56,7 @@ export function VoiceSearchModal({ open, onClose }: { open: boolean; onClose: ()
         recognition.maxAlternatives = 1;
         recognition.continuous = false;
 
-        recognition.onresult = (event: any) => {
+        recognition.onresult = (event: { results: { [x: number]: any; length: number; } }) => {
             const result = event.results[event.results.length - 1];
             setTranscript(result[0].transcript);
             if (result.isFinal) {

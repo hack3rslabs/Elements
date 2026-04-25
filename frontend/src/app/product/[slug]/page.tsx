@@ -4,13 +4,13 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
-import { WhatsAppButton } from "@/components/ui/whatsapp-button";
 import { MobileBottomNav } from "@/components/ui/mobile-nav";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Star, Heart, ShoppingCart, Truck, ShieldCheck, RotateCcw, Minus, Plus, Check, Phone, MessageCircle, MapPin, Users, Package, ChevronRight, Download, PlayCircle, Info, Award, Calendar, Ruler, Palette, Weight } from "lucide-react";
+import { WhatsAppButton } from "@/components/ui/whatsapp-button";
 
 interface ProductDetail {
     id: string;
@@ -73,16 +73,14 @@ export default function ProductPage() {
     const [bulkName, setBulkName] = useState("");
     const [bulkPhone, setBulkPhone] = useState("");
     const [bulkSubmitted, setBulkSubmitted] = useState(false);
-    const [recentAreas] = useState(() =>
-        RECENT_AREAS.sort(() => Math.random() - 0.5).slice(0, 5)
-    );
-
+   
     useEffect(() => {
+        if (!slug) return;
         setLoading(true);
         setSelectedImage(0);
         setQuantity(1);
         setActiveTab("description");
-        fetch(`http://localhost:5000/api/products/${slug}`)
+        fetch(`http://localhost:5000/api/products/${encodeURIComponent(slug)}`)
             .then(r => r.json())
             .then(d => {
                 if (d.success) setProduct(d.data);
@@ -164,12 +162,12 @@ export default function ProductPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-10 bg-white rounded-2xl p-4 md:p-10 shadow-sm border">
                         {/* Images */}
                         <div className="space-y-3">
-                            <div className="aspect-square relative rounded-2xl overflow-hidden bg-gray-100">
+                            <div className="aspect-square relative rounded-2xl overflow-hidden bg-white border p-4">
                                 <Image
-                                    src={product.images[selectedImage] || product.images[0]}
+                                    src={product.images?.[selectedImage] || product.images?.[0] || '/images/products/kicjen sunk 1.webp'}
                                     alt={product.name}
                                     fill
-                                    className="object-cover"
+                                    className="object-contain"
                                     priority
                                 />
                                 {product.stockStatus === "MADE_TO_ORDER" && (
@@ -188,7 +186,7 @@ export default function ProductPage() {
                                             onClick={() => setSelectedImage(i)}
                                             className={`h-16 w-16 md:h-20 md:w-20 relative rounded-xl overflow-hidden border-2 transition-all shrink-0 ${selectedImage === i ? 'border-[#1877F2] shadow-md' : 'border-transparent opacity-60 hover:opacity-100'}`}
                                         >
-                                            <Image src={img} alt={`${product.name} view ${i + 1}`} fill className="object-cover" />
+                                            <Image src={img} alt={`${product.name} view ${i + 1}`} fill className="object-contain p-1" />
                                         </button>
                                     ))}
                                 </div>
@@ -322,7 +320,7 @@ export default function ProductPage() {
                             <MapPin className="h-4 w-4 text-[#1877F2]" /> Recently Purchased In
                         </h3>
                         <div className="flex gap-2 md:gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                            {recentAreas.map((area, i) => (
+                            {RECENT_AREAS.map((area, i) => (
                                 <div key={i} className="shrink-0 flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 border">
                                     <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#1877F2]/10 to-blue-50 flex items-center justify-center">
                                         <MapPin className="h-3.5 w-3.5 text-[#1877F2]" />

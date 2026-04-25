@@ -35,6 +35,10 @@ export const getProduct = (slug: string) => apiFetch(`/products/${slug}`);
 export const getCategories = () => apiFetch('/categories');
 export const getCategory = (slug: string) => apiFetch(`/categories/${slug}`);
 
+// Hero Slides
+export const getHeroSlides = () => apiFetch('/heroslides');
+
+
 // Search
 export const searchProducts = (q: string) => apiFetch(`/search?q=${encodeURIComponent(q)}`);
 

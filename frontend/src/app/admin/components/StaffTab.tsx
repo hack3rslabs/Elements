@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, X, Trash2, Shield, Save, Mail, Phone, Eye, EyeOff, Key, Check, Edit } from "lucide-react";
 
 interface Staff { id: string; name: string; email: string; phone: string; role: string; status: string; createdAt: string; lastLogin: string | null; permissions: string[]; }
@@ -35,7 +35,7 @@ export default function StaffTab({ api, headers, showToast }: { api: string; hea
         } catch { showToast('Error adding staff'); }
     };
 
-    const updateStaff = async (id: string, data: any) => {
+    const updateStaff = async (id: string, data: { name?: string; phone?: string; password?: string; status?: string }) => {
         try {
             const res = await fetch(`${api}/api/admin/staff/${id}`, { method: 'PUT', headers, body: JSON.stringify(data) });
             const d = await res.json();
@@ -46,11 +46,7 @@ export default function StaffTab({ api, headers, showToast }: { api: string; hea
 
     const toggleStatus = async (id: string, status: string) => {
         const newStatus = status === 'active' ? 'inactive' : 'active';
-        try {
-            const res = await fetch(`${api}/api/admin/staff/${id}`, { method: 'PUT', headers, body: JSON.stringify({ status: newStatus }) });
-            const d = await res.json();
-            if (d.success) { setStaff(prev => prev.map(s => s.id === id ? d.data : s)); showToast(`User ${newStatus}`); }
-        } catch { showToast('Error'); }
+        await updateStaff(id, { status: newStatus });
     };
 
     const deleteStaff = async (id: string) => {
@@ -131,10 +127,16 @@ export default function StaffTab({ api, headers, showToast }: { api: string; hea
                     </tr></thead>
                     <tbody>
                         {staff.map(s => (
-                            <>
-                                <tr key={s.id} className="border-b hover:bg-gray-50 transition-colors">
+                            <React.Fragment key={s.id}>
+                                <tr className="border-b hover:bg-gray-50 transition-colors">
                                     <td className="p-3"><div className="flex items-center gap-3"><div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#1877F2] to-[#0d47a1] flex items-center justify-center text-white text-xs font-bold">{s.name.charAt(0).toUpperCase()}</div><div><p className="font-medium text-sm">{s.name}</p><p className="text-[10px] text-gray-400">{new Date(s.createdAt).toLocaleDateString()}{s.lastLogin ? ` • Last: ${new Date(s.lastLogin).toLocaleDateString()}` : ''}</p></div></div></td>
                                     <td className="p-3 hidden md:table-cell"><div className="text-xs"><div className="flex items-center gap-1 text-gray-500"><Mail className="h-3 w-3" />{s.email}</div>{s.phone && <div className="flex items-center gap-1 text-gray-400 mt-0.5"><Phone className="h-3 w-3" />{s.phone}</div>}</div></td>
+                                    <td className="p-3 text-center"><span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${ROLE_COLORS[s.role] || 'bg-gray-100'}`}>{s.role}</span></td>
+                                    <td className="p-3 text-center">
+                                        <button onClick={() => toggleStatus(s.id, s.status)} className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${s.status === 'active' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-400 border-gray-200'}`}>
+                                            {s.status === 'active' ? 'ACTIVE' : 'INACTIVE'}
+                                        </button>
+                                    </td>
                                     <td className="p-3 text-right">
                                         {s.role !== 'admin' && (
                                             <div className="flex items-center justify-end gap-1">
@@ -164,7 +166,7 @@ export default function StaffTab({ api, headers, showToast }: { api: string; hea
                                         ))}</div>
                                     </td></tr>
                                 )}
-                            </>
+                            </React.Fragment>
                         ))}
                     </tbody>
                 </table>

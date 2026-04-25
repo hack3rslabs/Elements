@@ -11,7 +11,7 @@ import {
     TrendingUp, ShoppingCart, Star, Phone, BarChart3, Globe, ArrowUpRight,
     Bell, LogOut, Upload, Save, CheckCircle2, AlertCircle,
     Sparkles, Shield, Loader2, Link2, FileText, Truck, CreditCard,
-    ArrowDownRight, IndianRupee
+    ArrowDownRight, IndianRupee, SlidersHorizontal, GripVertical, ToggleLeft, ToggleRight
 } from "lucide-react";
 import OrdersTab from "./components/OrdersTab";
 import IntegrationsTab from "./components/IntegrationsTab";
@@ -20,6 +20,9 @@ import CRMTab from "./components/CRMTab";
 import PaymentsTab from "./components/PaymentsTab";
 import StaffTab from "./components/StaffTab";
 import CustomersTab from "./components/CustomersTab";
+import ImageUploader from "@/components/ui/ImageUploader";
+import { CATEGORIES } from "@/constants/categories";
+
 
 const API = "http://localhost:5000";
 const HEADERS = { "Content-Type": "application/json", "x-api-key": "elements-admin-key-2026" };
@@ -34,6 +37,12 @@ interface Task { id: string; title: string; status: 'todo' | 'progress' | 'done'
 interface Banner { id: string; title: string; image: string; link: string; position: string; active: boolean; }
 interface Campaign { id: string; name: string; platform: string; budget: number; spent: number; clicks: number; conversions: number; status: string; }
 interface PageSeo { id: string; page: string; path: string; metaTitle: string; metaDescription: string; ogImage: string; keywords: string; }
+interface HeroSlide {
+    id: string; title: string; subtitle: string; description: string;
+    image: string; contextImage: string; cta: string; ctaLink: string;
+    color: string; highlight: string; priceRange: string;
+    status: string; order: number;
+}
 interface DashStats {
     totalProducts: number; totalOrders: number; totalRevenue: string; todayOrders: number;
     totalLeads: number; totalSubscribers: number; totalCustomers: number; weeklyLeads: number;
@@ -50,8 +59,7 @@ const NAV_ITEMS = [
     { icon: ShoppingCart, label: "Orders", key: "orders" },
     { icon: Users, label: "CRM / Leads", key: "crm" },
     { icon: CreditCard, label: "Payments", key: "payments" },
-    { icon: ImageIcon, label: "Banners", key: "banners" },
-    { icon: ListTodo, label: "Tasks", key: "tasks" },
+    { icon: SlidersHorizontal, label: "Hero Slides", key: "heroslides" },
     { icon: Megaphone, label: "Campaigns", key: "campaigns" },
     { icon: BarChart3, label: "Reports", key: "reports" },
     { icon: Link2, label: "Integrations", key: "integrations" },
@@ -78,7 +86,7 @@ export default function AdminPage() {
     const [settingsForm, setSettingsForm] = useState({ storeName: '', tagline: '', supportEmail: '', contactPhone: '', freeShippingAbove: '', deliveryTime: '', gstNumber: '', panNumber: '' });
     const [showProductForm, setShowProductForm] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-    const [productForm, setProductForm] = useState({ name: '', price: '', mrp: '', category: 'Kitchen Sinks', stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '' });
+    const [productForm, setProductForm] = useState({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' });
     const [productSearch, setProductSearch] = useState('');
     const [showTaskForm, setShowTaskForm] = useState(false);
     const [taskForm, setTaskForm] = useState({ title: '', priority: 'medium' as Task['priority'], assignee: '', due: '' });
@@ -89,6 +97,79 @@ export default function AdminPage() {
     const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
+    // ── Hero Slides state ──────────────────────────────────────────────────────
+    const EMPTY_SLIDE_FORM = { title: '', subtitle: '', description: '', image: '', contextImage: '', cta: '', ctaLink: '', color: 'from-[#0a192f] via-[#112240] to-[#1877F2]', highlight: '', priceRange: '', status: 'active', order: '' };
+    const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
+    const [showSlideForm, setShowSlideForm] = useState(false);
+    const [editingSlide, setEditingSlide] = useState<HeroSlide | null>(null);
+    const [slideForm, setSlideForm] = useState(EMPTY_SLIDE_FORM);
+    const [deleteSlideConfirm, setDeleteSlideConfirm] = useState<string | null>(null);
+    const [slideFormError, setSlideFormError] = useState('');
+
+    const handleSaveSlide = async () => {
+        setSlideFormError('');
+        if (!slideForm.title || !slideForm.image || !slideForm.cta || !slideForm.ctaLink) {
+            setSlideFormError('Title, Image URL, CTA text, and CTA Link are required.');
+            return;
+        }
+        const payload = { ...slideForm, order: slideForm.order !== '' ? Number(slideForm.order) : undefined };
+        try {
+            let res: Response;
+            if (editingSlide) {
+                res = await fetch(`${API}/api/admin/heroslides/${editingSlide.id}`, { method: 'PUT', headers: HEADERS, body: JSON.stringify(payload) });
+            } else {
+                res = await fetch(`${API}/api/admin/heroslides`, { method: 'POST', headers: HEADERS, body: JSON.stringify(payload) });
+            }
+
+            // Parse the JSON response
+            let d: any;
+            try {
+                d = await res.json();
+            } catch {
+                setSlideFormError(`Server error (${res.status}): Response is not valid JSON. Check if the backend is running correctly.`);
+                return;
+            }
+
+            if (!res.ok || !d.success) {
+                setSlideFormError(d.message || d.error || `Server returned ${res.status}`);
+                return;
+            }
+
+            if (editingSlide) {
+                setHeroSlides(prev => prev.map(s => s.id === editingSlide.id ? d.data : s));
+                showToast('Slide updated!');
+            } else {
+                setHeroSlides(prev => [...prev, d.data]);
+                showToast('Slide created!');
+            }
+            setShowSlideForm(false); setEditingSlide(null); setSlideForm(EMPTY_SLIDE_FORM);
+        } catch (err: any) {
+            console.error('[HeroSlides] Save error:', err);
+            if (err?.message?.includes('fetch') || err?.name === 'TypeError') {
+                setSlideFormError(`Cannot connect to backend at ${API}. Make sure the backend server is running (npm start in the backend folder).`);
+            } else {
+                setSlideFormError(`Error: ${err?.message || 'Unknown error. Check browser console for details.'}`);
+            }
+        }
+    };
+
+
+    const handleToggleSlide = async (id: string) => {
+        try {
+            const res = await fetch(`${API}/api/admin/heroslides/${id}/toggle`, { method: 'PATCH', headers: HEADERS });
+            const d = await res.json();
+            if (d.success) setHeroSlides(prev => prev.map(s => s.id === id ? d.data : s));
+        } catch { showToast('Toggle failed'); }
+    };
+
+    const handleDeleteSlide = async (id: string) => {
+        try {
+            await fetch(`${API}/api/admin/heroslides/${id}`, { method: 'DELETE', headers: HEADERS });
+            setHeroSlides(prev => prev.filter(s => s.id !== id)); showToast('Slide deleted!');
+        } catch { showToast('Delete failed'); }
+        setDeleteSlideConfirm(null);
+    };
+
     const fetchData = useCallback(async () => {
         const fetchSafely = async (url: string, opts?: any) => {
             try {
@@ -98,7 +179,7 @@ export default function AdminPage() {
             } catch { return null; }
         };
 
-        const [prodData, statsData, seoData, bannerData, campData, settingsData, staffData] = await Promise.all([
+        const [prodData, statsData, seoData, bannerData, campData, settingsData, staffData, heroData] = await Promise.all([
             fetchSafely(`${API}/api/products?limit=50`),
             fetchSafely(`${API}/api/admin/stats`, { headers: HEADERS }),
             fetchSafely(`${API}/api/admin/seo`, { headers: HEADERS }),
@@ -106,6 +187,7 @@ export default function AdminPage() {
             fetchSafely(`${API}/api/admin/campaigns`, { headers: HEADERS }),
             fetchSafely(`${API}/api/admin/settings`, { headers: HEADERS }),
             fetchSafely(`${API}/api/admin/staff`, { headers: HEADERS }),
+            fetchSafely(`${API}/api/admin/heroslides`, { headers: HEADERS }),
         ]);
 
         if (prodData?.success) setProducts(prodData.data);
@@ -115,6 +197,7 @@ export default function AdminPage() {
         if (campData?.success) setCampaigns(campData.data);
         if (settingsData?.success) setSettingsForm(settingsData.data);
         if (staffData?.success) setStaff(staffData.data);
+        if (heroData?.success) setHeroSlides(heroData.data);
     }, []);
 
     useEffect(() => {
@@ -129,18 +212,18 @@ export default function AdminPage() {
         try {
             const res = await fetch(`${API}/api/products`, {
                 method: 'POST', headers: HEADERS,
-                body: JSON.stringify({ name: productForm.name, price: Number(productForm.price), mrp: Number(productForm.mrp), categoryName: productForm.category, stock: Number(productForm.stock), description: productForm.description, sku: productForm.sku, metaTitle: productForm.metaTitle, metaDescription: productForm.metaDescription, tags: productForm.tags.split(',').map(t => t.trim()).filter(Boolean) }),
+                body: JSON.stringify({ name: productForm.name, price: Number(productForm.price), mrp: Number(productForm.mrp), categoryName: productForm.category, stock: Number(productForm.stock), description: productForm.description, sku: productForm.sku, metaTitle: productForm.metaTitle, metaDescription: productForm.metaDescription, tags: productForm.tags.split(',').map(t => t.trim()).filter(Boolean), images: productForm.images.split(',').map(i => i.trim()).filter(Boolean) }),
             });
             const data = await res.json();
             if (data.success && data.data) { setProducts(prev => [data.data, ...prev]); showToast('Product added!'); }
         } catch { showToast('Saved locally'); }
         setShowProductForm(false);
-        setProductForm({ name: '', price: '', mrp: '', category: 'Kitchen Sinks', stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '' });
+        setProductForm({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' });
     };
 
     const startEditProduct = (p: Product) => {
         setEditingProduct(p);
-        setProductForm({ name: p.name, price: p.price.toString(), mrp: p.mrp.toString(), category: p.categoryName, stock: p.stock.toString(), description: '', sku: p.sku, metaTitle: p.metaTitle || '', metaDescription: p.metaDescription || '', tags: (p.tags || []).join(', ') });
+        setProductForm({ name: p.name, price: p.price.toString(), mrp: p.mrp.toString(), category: p.categoryName, stock: p.stock.toString(), description: '', sku: p.sku, metaTitle: p.metaTitle || '', metaDescription: p.metaDescription || '', tags: (p.tags || []).join(', '), images: (p.images || []).join(', ') });
         setShowProductForm(true);
     };
 
@@ -149,13 +232,13 @@ export default function AdminPage() {
         try {
             await fetch(`${API}/api/products/${editingProduct.id}`, {
                 method: 'PUT', headers: HEADERS,
-                body: JSON.stringify({ name: productForm.name, price: Number(productForm.price), mrp: Number(productForm.mrp), categoryName: productForm.category, stock: Number(productForm.stock), sku: productForm.sku, metaTitle: productForm.metaTitle, metaDescription: productForm.metaDescription, tags: productForm.tags.split(',').map(t => t.trim()).filter(Boolean) }),
+                body: JSON.stringify({ name: productForm.name, price: Number(productForm.price), mrp: Number(productForm.mrp), categoryName: productForm.category, stock: Number(productForm.stock), sku: productForm.sku, metaTitle: productForm.metaTitle, metaDescription: productForm.metaDescription, tags: productForm.tags.split(',').map(t => t.trim()).filter(Boolean), images: productForm.images.split(',').map(i => i.trim()).filter(Boolean) }),
             });
             showToast('Product updated!');
         } catch { showToast('Updated locally'); }
-        setProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...p, name: productForm.name, price: Number(productForm.price), mrp: Number(productForm.mrp), categoryName: productForm.category, stock: Number(productForm.stock), sku: productForm.sku, metaTitle: productForm.metaTitle, metaDescription: productForm.metaDescription, tags: productForm.tags.split(',').map(t => t.trim()).filter(Boolean) } : p));
+        setProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...p, name: productForm.name, price: Number(productForm.price), mrp: Number(productForm.mrp), categoryName: productForm.category, stock: Number(productForm.stock), sku: productForm.sku, metaTitle: productForm.metaTitle, metaDescription: productForm.metaDescription, tags: productForm.tags.split(',').map(t => t.trim()).filter(Boolean), images: productForm.images.split(',').map(i => i.trim()).filter(Boolean) } : p));
         setEditingProduct(null); setShowProductForm(false);
-        setProductForm({ name: '', price: '', mrp: '', category: 'Kitchen Sinks', stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '' });
+        setProductForm({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' });
     };
 
     const handleDeleteProduct = async (id: string) => {
@@ -219,8 +302,13 @@ export default function AdminPage() {
                 <nav className="p-2 space-y-0.5 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
                     {filteredNav.map(item => (
                         <button key={item.key} onClick={() => { setActiveTab(item.key); setSidebarOpen(false); }}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-all ${activeTab === item.key ? 'bg-[#1877F2] text-white font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
-                            <item.icon className="h-4 w-4" />{item.label}
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13px] transition-all ${activeTab === item.key ? 'bg-[#1877F2] text-white font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                            <div className="flex items-center gap-2.5">
+                                <item.icon className="h-4 w-4" />{item.label}
+                            </div>
+                            {item.key === 'products' && <span className="bg-white/10 text-[10px] px-1.5 py-0.5 rounded-full">{ds?.totalProducts || products.length || 0}</span>}
+                            {item.key === 'orders' && <span className="bg-white/10 text-[10px] px-1.5 py-0.5 rounded-full">{ds?.totalOrders || 0}</span>}
+                            {item.key === 'crm' && <span className="bg-white/10 text-[10px] px-1.5 py-0.5 rounded-full">{ds?.totalLeads || 0}</span>}
                         </button>
                     ))}
                 </nav>
@@ -414,7 +502,7 @@ export default function AdminPage() {
                                     <p className="text-sm text-gray-400">{products.length} products</p>
                                     <div className="relative"><SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" /><input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Search..." className="h-8 pl-8 pr-3 rounded-lg border text-xs w-40 focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" /></div>
                                 </div>
-                                <button onClick={() => { setEditingProduct(null); setProductForm({ name: '', price: '', mrp: '', category: 'Kitchen Sinks', stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '' }); setShowProductForm(true); }} className="inline-flex items-center gap-2 bg-[#1877F2] text-white rounded-full px-4 py-2 text-sm font-medium hover:bg-[#0d47a1] shadow-md"><Plus className="h-4 w-4" /> Add Product</button>
+                                <button onClick={() => { setEditingProduct(null); setProductForm({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' }); setShowProductForm(true); }} className="inline-flex items-center gap-2 bg-[#1877F2] text-white rounded-full px-4 py-2 text-sm font-medium hover:bg-[#0d47a1] shadow-md"><Plus className="h-4 w-4" /> Add Product</button>
                             </div>
                             {showProductForm && (
                                 <div className="bg-white rounded-2xl border shadow-sm p-6">
@@ -424,17 +512,95 @@ export default function AdminPage() {
                                         <div><label className="text-xs font-medium text-gray-500 block mb-1">SKU *</label><input value={productForm.sku} onChange={e => setProductForm(p => ({ ...p, sku: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="EL-KS-XXX" /></div>
                                         <div><label className="text-xs font-medium text-gray-500 block mb-1">Price (₹) *</label><input type="number" value={productForm.price} onChange={e => setProductForm(p => ({ ...p, price: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="4999" /></div>
                                         <div><label className="text-xs font-medium text-gray-500 block mb-1">MRP (₹) *</label><input type="number" value={productForm.mrp} onChange={e => setProductForm(p => ({ ...p, mrp: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="7999" /></div>
-                                        <div><label className="text-xs font-medium text-gray-500 block mb-1">Category</label><select value={productForm.category} onChange={e => setProductForm(p => ({ ...p, category: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm bg-white" aria-label="Category"><option>Kitchen Sinks</option><option>Kitchen Accessories</option><option>Floor Guard Sheets</option><option>Mitti Magic Elevations</option><option>Exterior Cladding</option><option>Wall Tiles</option><option>Floor Tiles</option><option>Printed Tiles</option></select></div>
-                                        <div><label className="text-xs font-medium text-gray-500 block mb-1">Stock</label><input type="number" value={productForm.stock} onChange={e => setProductForm(p => ({ ...p, stock: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="50" /></div>
-                                        <div className="md:col-span-2"><label className="text-xs font-medium text-gray-500 block mb-1">Description</label><textarea value={productForm.description} onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))} rows={2} className="w-full rounded-xl border px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="Product description..." /></div>
-                                        <div className="md:col-span-2">
-                                            <label className="text-xs font-medium text-gray-500 block mb-1">Product Images</label>
-                                            <div className="border-2 border-dashed rounded-xl p-4 text-center text-gray-400 hover:border-[#1877F2] transition-colors">
-                                                <Upload className="h-6 w-6 mx-auto mb-1 text-gray-400" />
-                                                <p className="text-xs font-medium">Image Upload Instructions</p>
-                                                <p className="text-[10px] mt-1 max-w-md mx-auto leading-relaxed">Place product images in <code className="bg-gray-100 px-1 rounded">public/images/products/</code> folder. Name files descriptively (e.g., <code className="bg-gray-100 px-1 rounded">kitchen-sink-premium.webp</code>). Supported: JPG, PNG, WebP (max 5MB). Recommended: 800×800px square. Then reference them as <code className="bg-gray-100 px-1 rounded">/images/products/filename.webp</code> in the product data.</p>
+                                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50/50 p-4 rounded-2xl border border-dashed">
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1.5">1. Main Category</label>
+                                                <select 
+                                                    value={CATEGORIES.find(c => 
+                                                        c.name === productForm.category || 
+                                                        c.subCategories?.some(sc => sc.name === productForm.category || sc.subCategories?.some(m => m.name === productForm.category))
+                                                    )?.name || ""} 
+                                                    onChange={e => {
+                                                        const cat = CATEGORIES.find(c => c.name === e.target.value);
+                                                        setProductForm(p => ({ ...p, category: cat?.name || "" }));
+                                                    }} 
+                                                    className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500/20 outline-none" 
+                                                >
+                                                    <option value="">Select Category</option>
+                                                    {CATEGORIES.map(cat => (
+                                                        <option key={cat.name} value={cat.name}>{cat.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1.5">2. Sub Category</label>
+                                                <select 
+                                                    value={CATEGORIES.find(c => c.subCategories?.some(sc => sc.name === productForm.category || sc.subCategories?.some(m => m.name === productForm.category)))
+                                                        ?.subCategories?.find(sc => sc.name === productForm.category || sc.subCategories?.some(m => m.name === productForm.category))?.name || ""} 
+                                                    onChange={e => setProductForm(p => ({ ...p, category: e.target.value }))} 
+                                                    className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500/20 outline-none disabled:opacity-50 disabled:bg-gray-100" 
+                                                    disabled={!CATEGORIES.find(c => 
+                                                        c.name === productForm.category || 
+                                                        c.subCategories?.some(sc => sc.name === productForm.category || sc.subCategories?.some(m => m.name === productForm.category))
+                                                    )?.subCategories}
+                                                >
+                                                    <option value="">Select Sub Category</option>
+                                                    {CATEGORIES.find(c => 
+                                                        c.name === productForm.category || 
+                                                        c.subCategories?.some(sc => sc.name === productForm.category || sc.subCategories?.some(m => m.name === productForm.category))
+                                                    )?.subCategories?.map(sub => (
+                                                        <option key={sub.name} value={sub.name}>{sub.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1.5">3. Model</label>
+                                                <select 
+                                                    value={productForm.category} 
+                                                    onChange={e => setProductForm(p => ({ ...p, category: e.target.value }))} 
+                                                    className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500/20 outline-none disabled:opacity-50 disabled:bg-gray-100" 
+                                                    disabled={!CATEGORIES.flatMap(c => c.subCategories || []).find(sc => sc.name === productForm.category || sc.subCategories?.some(m => m.name === productForm.category))?.subCategories}
+                                                >
+                                                    <option value="">Select Model (Optional)</option>
+                                                    {CATEGORIES.flatMap(c => c.subCategories || [])
+                                                        .find(sc => sc.name === productForm.category || sc.subCategories?.some(m => m.name === productForm.category))
+                                                        ?.subCategories?.map(model => (
+                                                            <option key={model.name} value={model.name}>{model.name}</option>
+                                                        ))}
+                                                </select>
                                             </div>
                                         </div>
+                                        <div><label className="text-xs font-medium text-gray-500 block mb-1">Stock</label><input type="number" value={productForm.stock} onChange={e => setProductForm(p => ({ ...p, stock: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="50" /></div>
+                                        <div className="md:col-span-2"><label className="text-xs font-medium text-gray-500 block mb-1">Description</label><textarea value={productForm.description} onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))} rows={2} className="w-full rounded-xl border px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="Product description..." /></div>
+                                        <div className="md:col-span-2 space-y-4">
+                                            <label className="text-sm font-semibold text-gray-700">Product Gallery (Max 4 Images)</label>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                {[0, 1, 2, 3].map((index) => {
+                                                    const imagesArr = productForm.images.split(',').map(s => s.trim()).filter(Boolean);
+                                                    return (
+                                                        <ImageUploader
+                                                            key={index}
+                                                            label={`Image ${index + 1}`}
+                                                            value={imagesArr[index] || ''}
+                                                            onChange={(url) => {
+                                                                const newArr = [...imagesArr];
+                                                                // If url is empty (cleared), remove it or set to empty
+                                                                if (!url) {
+                                                                    newArr.splice(index, 1);
+                                                                } else {
+                                                                    newArr[index] = url;
+                                                                }
+                                                                setProductForm(p => ({ ...p, images: newArr.filter(Boolean).join(', ') }));
+                                                            }}
+                                                            placeholder={`Image URL ${index + 1}`}
+                                                        />
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
                                         <div><label className="text-xs font-medium text-gray-500 block mb-1">SEO Title</label><input value={productForm.metaTitle} onChange={e => setProductForm(p => ({ ...p, metaTitle: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="SEO title" /></div>
                                         <div><label className="text-xs font-medium text-gray-500 block mb-1">SEO Description</label><input value={productForm.metaDescription} onChange={e => setProductForm(p => ({ ...p, metaDescription: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="Meta description" /></div>
                                         <div className="md:col-span-2"><label className="text-xs font-medium text-gray-500 block mb-1">Tags (comma separated)</label><input value={productForm.tags} onChange={e => setProductForm(p => ({ ...p, tags: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="kitchen sink, stainless steel" /></div>
@@ -460,7 +626,7 @@ export default function AdminPage() {
                             <div className="bg-white rounded-2xl border shadow-sm overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-gray-50 border-b"><tr><th className="text-left p-3 font-medium text-xs text-gray-500">Product</th><th className="text-left p-3 font-medium text-xs text-gray-500 hidden md:table-cell">Category</th><th className="text-right p-3 font-medium text-xs text-gray-500">Price</th><th className="text-center p-3 font-medium text-xs text-gray-500 hidden lg:table-cell">Stock</th><th className="text-center p-3 font-medium text-xs text-gray-500 hidden lg:table-cell">Rating</th><th className="text-right p-3 font-medium text-xs text-gray-500">Actions</th></tr></thead><tbody>
                                 {filteredProducts.map(p => (
                                     <tr key={p.id} className="border-b hover:bg-gray-50 transition-colors">
-                                        <td className="p-3"><div className="flex items-center gap-3"><div className="h-10 w-10 rounded-lg bg-gray-100 overflow-hidden shrink-0"><img src={p.images?.[0] || '/images/products/kicjen sunk 1.webp'} alt={p.name} className="w-full h-full object-cover" /></div><div className="min-w-0"><p className="font-medium text-xs md:text-sm truncate max-w-[150px] md:max-w-[250px]">{p.name}</p><p className="text-[10px] text-gray-400">SKU: {p.sku}</p></div></div></td>
+                                        <td className="p-3"><div className="flex items-center gap-3"><div className="h-10 w-10 rounded-lg bg-gray-100 overflow-hidden shrink-0"><img src={p.images?.[0] || '/images/products/kicjen sunk 1.webp'} alt={p.name} className="w-full h-full object-cover" /></div><div className="min-w-0"><p className="font-medium text-xs md:text-sm">{p.name}</p><p className="text-[10px] text-gray-400">SKU: {p.sku}</p></div></div></td>
                                         <td className="p-3 text-xs text-gray-400 hidden md:table-cell">{p.categoryName}</td>
                                         <td className="p-3 text-right"><span className="font-medium text-xs">₹{p.price.toLocaleString()}</span>{p.mrp > p.price && <span className="text-[10px] text-gray-400 line-through block">₹{p.mrp.toLocaleString()}</span>}</td>
                                         <td className="p-3 text-center hidden lg:table-cell"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.stockStatus === 'IN_STOCK' ? 'bg-green-100 text-green-700' : p.stockStatus === 'MADE_TO_ORDER' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{p.stock > 0 ? p.stock : p.stockStatus.replace(/_/g, ' ')}</span></td>
@@ -478,6 +644,183 @@ export default function AdminPage() {
                     {activeTab === "reports" && <ReportsTab />}
                     {activeTab === "integrations" && <IntegrationsTab />}
                     {activeTab === "customers" && <CustomersTab api={API} headers={HEADERS} showToast={showToast} />}
+
+                    {/* HERO SLIDES */}
+                    {activeTab === "heroslides" && (
+                        <div className="space-y-4">
+                            {/* Delete confirmation modal */}
+                            {deleteSlideConfirm && (
+                                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                                    <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl">
+                                        <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4"><AlertCircle className="h-6 w-6 text-red-500" /></div>
+                                        <h3 className="text-xl font-bold text-center mb-2">Delete Slide?</h3>
+                                        <p className="text-sm text-center text-gray-500 mb-6">This action cannot be undone.</p>
+                                        <div className="flex gap-3">
+                                            <button onClick={() => setDeleteSlideConfirm(null)} className="flex-1 py-3 rounded-xl border text-sm font-bold hover:bg-gray-50">Cancel</button>
+                                            <button onClick={() => handleDeleteSlide(deleteSlideConfirm!)} className="flex-1 py-3 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600">Yes, Delete</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex items-center justify-between flex-wrap gap-3">
+                                <div>
+                                    <p className="text-sm text-gray-400">{heroSlides.length} slides</p>
+                                    <p className="text-xs text-gray-300 mt-0.5">Changes are reflected live on the homepage hero section</p>
+                                </div>
+                                <button
+                                    onClick={() => { setEditingSlide(null); setSlideForm(EMPTY_SLIDE_FORM); setSlideFormError(''); setShowSlideForm(true); }}
+                                    className="inline-flex items-center gap-2 bg-[#1877F2] text-white rounded-full px-4 py-2 text-sm font-medium hover:bg-[#0d47a1] shadow-md"
+                                >
+                                    <Plus className="h-4 w-4" /> Add Slide
+                                </button>
+                            </div>
+
+                            {/* Add / Edit Form */}
+                            {showSlideForm && (
+                                <div className="bg-white rounded-2xl border shadow-sm p-6">
+                                    <div className="flex items-center justify-between mb-5">
+                                        <h3 className="font-semibold text-lg">{editingSlide ? 'Edit Hero Slide' : 'Add New Hero Slide'}</h3>
+                                        <button onClick={() => { setShowSlideForm(false); setEditingSlide(null); setSlideFormError(''); }} className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200"><X className="h-4 w-4" /></button>
+                                    </div>
+                                    {slideFormError && (
+                                        <div className="mb-4 flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3">
+                                            <AlertCircle className="h-4 w-4 shrink-0" />{slideFormError}
+                                        </div>
+                                    )}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div><label className="text-xs font-medium text-gray-500 block mb-1">Title *</label><input value={slideForm.title} onChange={e => setSlideForm(f => ({ ...f, title: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="e.g. Premium Kitchen Sinks" /></div>
+                                        <div><label className="text-xs font-medium text-gray-500 block mb-1">Subtitle</label><input value={slideForm.subtitle} onChange={e => setSlideForm(f => ({ ...f, subtitle: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="e.g. 304-Grade Stainless Steel" /></div>
+                                        <div className="md:col-span-2"><label className="text-xs font-medium text-gray-500 block mb-1">Description</label><textarea value={slideForm.description} onChange={e => setSlideForm(f => ({ ...f, description: e.target.value }))} rows={2} className="w-full rounded-xl border px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="Short product pitch for the hero section..." /></div>
+                                        <div>
+                                            <ImageUploader
+                                                label="Main Image"
+                                                required
+                                                value={slideForm.image}
+                                                onChange={(url) => setSlideForm(f => ({ ...f, image: url }))}
+                                                placeholder="http://localhost:5000/uploads/sink.webp"
+                                            />
+                                        </div>
+                                        <div>
+                                            <ImageUploader
+                                                label="Context / Applied View Image"
+                                                value={slideForm.contextImage}
+                                                onChange={(url) => setSlideForm(f => ({ ...f, contextImage: url }))}
+                                                placeholder="http://localhost:5000/uploads/sink-applied.jpg"
+                                            />
+                                        </div>
+
+
+                                        <div><label className="text-xs font-medium text-gray-500 block mb-1">CTA Button Text *</label><input value={slideForm.cta} onChange={e => setSlideForm(f => ({ ...f, cta: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="Explore Kitchen Sinks" /></div>
+                                        <div><label className="text-xs font-medium text-gray-500 block mb-1">CTA Link *</label><input value={slideForm.ctaLink} onChange={e => setSlideForm(f => ({ ...f, ctaLink: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="/category/kitchen" /></div>
+                                        <div className="md:col-span-2"><label className="text-xs font-medium text-gray-500 block mb-1">Background Gradient<span className="ml-1 text-gray-400 font-normal">(Tailwind from-/via-/to- classes)</span></label><input value={slideForm.color} onChange={e => setSlideForm(f => ({ ...f, color: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm font-mono focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="from-[#0a192f] via-[#112240] to-[#1877F2]" /></div>
+                                        <div><label className="text-xs font-medium text-gray-500 block mb-1">Highlight Badge</label><input value={slideForm.highlight} onChange={e => setSlideForm(f => ({ ...f, highlight: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="🏆 Premium Choice — ISO Certified" /></div>
+                                        <div><label className="text-xs font-medium text-gray-500 block mb-1">Price Range</label><input value={slideForm.priceRange} onChange={e => setSlideForm(f => ({ ...f, priceRange: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="₹4,999 - ₹12,499" /></div>
+                                        <div><label className="text-xs font-medium text-gray-500 block mb-1">Display Order</label><input type="number" value={slideForm.order} onChange={e => setSlideForm(f => ({ ...f, order: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="0" /></div>
+                                        <div><label className="text-xs font-medium text-gray-500 block mb-1">Status</label><select value={slideForm.status} onChange={e => setSlideForm(f => ({ ...f, status: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm bg-white" aria-label="Status"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+                                    </div>
+                                    {/* Preview chip */}
+                                    {slideForm.color && (
+                                        <div className={`mt-4 h-8 rounded-xl bg-gradient-to-r ${slideForm.color} flex items-center justify-center`}>
+                                            <span className="text-white text-xs font-medium opacity-80">Gradient Preview</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-end gap-3 mt-6">
+                                        <button onClick={() => { setShowSlideForm(false); setEditingSlide(null); setSlideFormError(''); }} className="px-4 py-2 rounded-full border text-sm font-medium hover:bg-gray-50">Cancel</button>
+                                        <button onClick={handleSaveSlide} className="px-6 py-2 rounded-full bg-[#1877F2] text-white text-sm font-medium hover:bg-[#0d47a1] shadow-md flex items-center gap-2"><Save className="h-4 w-4" /> {editingSlide ? 'Update Slide' : 'Create Slide'}</button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Slides list */}
+                            {heroSlides.length === 0 && !showSlideForm ? (
+                                <div className="bg-white rounded-2xl border shadow-sm p-10 text-center">
+                                    <div className="h-14 w-14 rounded-2xl bg-[#1877F2]/10 flex items-center justify-center mx-auto mb-4">
+                                        <SlidersHorizontal className="h-7 w-7 text-[#1877F2]" />
+                                    </div>
+                                    <p className="font-semibold text-gray-700">No Hero Slides Yet</p>
+                                    <p className="text-xs text-gray-400 mt-1 mb-4">Add your first slide. It will appear live on the homepage hero carousel.</p>
+                                    <button onClick={() => { setEditingSlide(null); setSlideForm(EMPTY_SLIDE_FORM); setSlideFormError(''); setShowSlideForm(true); }} className="inline-flex items-center gap-2 bg-[#1877F2] text-white rounded-full px-5 py-2 text-sm font-medium hover:bg-[#0d47a1] shadow-md"><Plus className="h-4 w-4" /> Add First Slide</button>
+                                </div>
+                            ) : (
+                                <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-gray-50 border-b">
+                                                <tr>
+                                                    <th className="text-left p-3 font-medium text-xs text-gray-500">Slide</th>
+                                                    <th className="text-left p-3 font-medium text-xs text-gray-500 hidden md:table-cell">Gradient</th>
+                                                    <th className="text-left p-3 font-medium text-xs text-gray-500 hidden lg:table-cell">CTA</th>
+                                                    <th className="text-center p-3 font-medium text-xs text-gray-500">Order</th>
+                                                    <th className="text-center p-3 font-medium text-xs text-gray-500">Status</th>
+                                                    <th className="text-right p-3 font-medium text-xs text-gray-500">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {heroSlides.map(slide => (
+                                                    <tr key={slide.id} className="border-b hover:bg-gray-50 transition-colors">
+                                                        <td className="p-3">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="h-12 w-20 rounded-xl overflow-hidden shrink-0 bg-gray-100">
+                                                                    {slide.image && <img src={slide.image} alt={slide.title} className="w-full h-full object-cover" />}
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="font-semibold text-xs md:text-sm truncate max-w-[160px]">{slide.title}</p>
+                                                                    <p className="text-[10px] text-gray-400 truncate max-w-[160px]">{slide.subtitle}</p>
+                                                                    <p className="text-[10px] text-gray-300 truncate max-w-[160px] hidden md:block">{slide.priceRange}</p>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-3 hidden md:table-cell">
+                                                            <div className={`h-6 w-24 rounded-lg bg-gradient-to-r ${slide.color}`} title={slide.color} />
+                                                        </td>
+                                                        <td className="p-3 hidden lg:table-cell">
+                                                            <p className="text-xs text-gray-600 font-medium">{slide.cta}</p>
+                                                            <p className="text-[10px] text-gray-400">{slide.ctaLink}</p>
+                                                        </td>
+                                                        <td className="p-3 text-center">
+                                                            <span className="text-xs font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded-full">#{slide.order}</span>
+                                                        </td>
+                                                        <td className="p-3 text-center">
+                                                            <button
+                                                                onClick={() => handleToggleSlide(slide.id)}
+                                                                title={slide.status === 'active' ? 'Click to deactivate' : 'Click to activate'}
+                                                                className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full transition-colors ${
+                                                                    slide.status === 'active'
+                                                                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                                                                }`}
+                                                            >
+                                                                {slide.status === 'active'
+                                                                    ? <><ToggleRight className="h-3.5 w-3.5" /> Active</>  
+                                                                    : <><ToggleLeft className="h-3.5 w-3.5" /> Inactive</>}
+                                                            </button>
+                                                        </td>
+                                                        <td className="p-3 text-right">
+                                                            <div className="flex items-center justify-end gap-1">
+                                                                <button
+                                                                    onClick={() => { setEditingSlide(slide); setSlideForm({ title: slide.title, subtitle: slide.subtitle, description: slide.description, image: slide.image, contextImage: slide.contextImage, cta: slide.cta, ctaLink: slide.ctaLink, color: slide.color, highlight: slide.highlight, priceRange: slide.priceRange, status: slide.status, order: String(slide.order) }); setSlideFormError(''); setShowSlideForm(true); }}
+                                                                    className="h-7 w-7 rounded-lg bg-blue-50 text-[#1877F2] flex items-center justify-center hover:bg-blue-100" aria-label="Edit slide"
+                                                                ><Edit className="h-3.5 w-3.5" /></button>
+                                                                <button
+                                                                    onClick={() => setDeleteSlideConfirm(slide.id)}
+                                                                    className="h-7 w-7 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100" aria-label="Delete slide"
+                                                                ><Trash2 className="h-3.5 w-3.5" /></button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="px-4 py-3 bg-blue-50 border-t flex items-center gap-2">
+                                        <CheckCircle2 className="h-4 w-4 text-[#1877F2] shrink-0" />
+                                        <p className="text-xs text-[#1877F2]">Active slides appear on the homepage in order. Toggle status to show/hide individual slides instantly.</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* BANNERS */}
                     {activeTab === "banners" && (

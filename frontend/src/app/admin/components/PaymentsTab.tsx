@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
-import { CreditCard, IndianRupee, CheckCircle2, Clock, AlertCircle, ArrowUpRight, Search as SearchIcon, Filter, RefreshCw } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { CreditCard, IndianRupee, Clock, AlertCircle, ArrowUpRight, Search as SearchIcon, Filter, RefreshCw } from "lucide-react";
 
 const API = "http://localhost:5000";
 const HEADERS = { "Content-Type": "application/json", "x-api-key": "elements-admin-key-2026" };
@@ -32,7 +32,7 @@ export default function PaymentsTab() {
     const [search, setSearch] = useState("");
     const [loading, setLoading] = useState(true);
 
-    const fetchPayments = async () => {
+    const fetchPayments = useCallback(async () => {
         try {
             const params = new URLSearchParams();
             if (filter !== 'all') params.set('status', filter);
@@ -47,9 +47,14 @@ export default function PaymentsTab() {
             setPayments([]);
         }
         setLoading(false);
-    };
+    }, [filter, methodFilter]);
 
-    useEffect(() => { fetchPayments(); }, [filter, methodFilter]);
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            fetchPayments();
+        }, 0);
+        return () => clearTimeout(timer);
+    }, [fetchPayments]);
 
     const filtered = payments.filter(p =>
         !search || p.id.toLowerCase().includes(search.toLowerCase()) || p.orderId.toLowerCase().includes(search.toLowerCase()) || p.transactionId.toLowerCase().includes(search.toLowerCase())

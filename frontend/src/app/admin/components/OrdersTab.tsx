@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Package, Truck, CheckCircle2, Clock, Search as SearchIcon, XCircle, RefreshCw, IndianRupee, ArrowUpRight, Eye, X } from "lucide-react";
+import { Package, Truck, CheckCircle2, Clock, Search as SearchIcon, XCircle, RefreshCw, Eye, X } from "lucide-react";
 
 const API = "http://localhost:5000";
 const HDRS = { "Content-Type": "application/json", "x-api-key": "elements-admin-key-2026" };
@@ -43,7 +43,12 @@ export default function OrdersTab() {
         setLoading(false);
     }, [filter]);
 
-    useEffect(() => { fetchOrders(); }, [fetchOrders]);
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            fetchOrders();
+        }, 0);
+        return () => clearTimeout(timer);
+    }, [fetchOrders]);
 
     const updateStatus = async (id: string, newStatus: string) => {
         try {
