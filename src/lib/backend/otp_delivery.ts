@@ -7,7 +7,7 @@ const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_PHONE = process.env.TWILIO_PHONE_NUMBER;
 
-let twilioClient: any; // Twilio's own types are complex to import without full setup, keeping any for now but could use return type of twilio()
+let twilioClient: ReturnType<typeof twilio> | undefined;
 if (TWILIO_SID && TWILIO_TOKEN) {
     twilioClient = twilio(TWILIO_SID, TWILIO_TOKEN);
 }

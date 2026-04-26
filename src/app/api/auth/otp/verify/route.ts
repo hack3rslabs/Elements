@@ -22,26 +22,22 @@ export async function POST(request: NextRequest) {
       await prisma.verificationOTP.delete({ where: { phone } });
     }
 
-    // Find or create user
+    // Find or create user by phone number
     let user = await prisma.user.findFirst({
       where: { phone }
     });
 
     if (!user) {
-      user = await prisma.user.findUnique({
-        where: { email: phone + '@elements.com' }
-      });
-    }
-
-    if (!user) {
+      // Create new user if not found
       user = await prisma.user.create({
         data: {
           name: 'User ' + phone.slice(-4),
-          email: phone + '@elements.com',
+          email: `${phone}@elements.com`, // Consistent placeholder email
           phone: phone,
           role: 'USER'
         }
       });
+      console.log(`[AUTH] Created new user for phone: ${phone}`);
     }
 
     return NextResponse.json({ 
@@ -55,9 +51,10 @@ export async function POST(request: NextRequest) {
         permissions: user.permissions || []
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[AUTH] OTP Verify Error:', error);
-    return NextResponse.json({ success: false, message: 'Verification failed', error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Verification failed';
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }
 

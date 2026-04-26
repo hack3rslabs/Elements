@@ -5,9 +5,11 @@ import Image from "next/image";
 import { Search, ShoppingCart, Heart, User, Menu, X, Phone, Mail, ChevronDown, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
+import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect, useRef } from "react";
 
 export function Header() {
+    const { data: session, status } = useSession();
     const { cart } = useStore();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
@@ -93,7 +95,6 @@ export function Header() {
                     </div>
                     <div className="flex items-center gap-4">
                         <Link href="/login" className="hover:text-blue-200 transition-colors">Login</Link>
-                        <Link href="/register" className="hover:text-blue-200 transition-colors">Register</Link>
                     </div>
                 </div>
             </div>
@@ -205,11 +206,29 @@ export function Header() {
                                 )}
                             </Button>
                         </Link>
-                        <Link href="/login">
-                            <Button variant="ghost" size="icon" className="hover:bg-accent hover:text-[#1877F2]">
-                                <User className="h-5 w-5" />
-                            </Button>
-                        </Link>
+                        {status === "authenticated" ? (
+                            <div className="flex items-center gap-2">
+                                <Link href={session?.user?.role === "ADMIN" || session?.user?.role === "STAFF" ? "/admin" : "/profile"}>
+                                    <Button variant="ghost" size="icon" className="hover:bg-accent hover:text-[#1877F2]" title="Account">
+                                        <User className="h-5 w-5" />
+                                    </Button>
+                                </Link>
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => signOut({ callbackUrl: "/" })}
+                                    className="text-xs font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 hidden md:flex"
+                                >
+                                    Logout
+                                </Button>
+                            </div>
+                        ) : (
+                            <Link href="/login">
+                                <Button variant="ghost" size="icon" className="hover:bg-accent hover:text-[#1877F2]">
+                                    <User className="h-5 w-5" />
+                                </Button>
+                            </Link>
+                        )}
                     </div>
                 </div>
 
@@ -238,13 +257,25 @@ export function Header() {
                                     ))}
                                 </div>
                             ))}
-                            <div className="border-t pt-3 mt-3 flex gap-2 px-4 shadow-sm pb-2">
-                                <Link href="/login" className="flex-1" onClick={() => setMobileOpen(false)}>
-                                    <Button variant="outline" className="w-full">Login</Button>
-                                </Link>
-                                <Link href="/register" className="flex-1" onClick={() => setMobileOpen(false)}>
-                                    <Button className="w-full">Register</Button>
-                                </Link>
+                            <div className="border-t pt-3 mt-3 flex flex-col gap-2 px-4 shadow-sm pb-2">
+                                {status === "authenticated" ? (
+                                    <>
+                                        <div className="flex items-center justify-between px-2 mb-2">
+                                            <div className="flex flex-col">
+                                                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Account</p>
+                                                <p className="text-sm font-medium text-gray-900">{session?.user?.name || session?.user?.phone}</p>
+                                            </div>
+                                            <Button variant="ghost" size="sm" onClick={() => signOut({ callbackUrl: "/" })} className="text-xs font-bold text-red-500">Logout</Button>
+                                        </div>
+                                        <Link href={session?.user?.role === "ADMIN" || session?.user?.role === "STAFF" ? "/admin" : "/profile"} onClick={() => setMobileOpen(false)}>
+                                            <Button className="w-full bg-[#1877F2] hover:bg-[#0d47a1]">Go to Dashboard</Button>
+                                        </Link>
+                                    </>
+                                ) : (
+                                    <Link href="/login" className="w-full" onClick={() => setMobileOpen(false)}>
+                                        <Button className="w-full bg-[#1877F2] hover:bg-[#0d47a1]">Login / Register</Button>
+                                    </Link>
+                                )}
                             </div>
                         </nav>
                     </div>

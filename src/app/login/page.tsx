@@ -130,8 +130,8 @@ export default function LoginPage() {
                             {/* Right Side: Login Form */}
                             <div className="md:w-3/5 p-8 md:p-10">
                                 <div className="mb-8">
-                                    <h1 className="text-2xl font-bold text-gray-900">Sign In</h1>
-                                    <p className="text-gray-500 text-sm mt-1">Enter your phone number to continue</p>
+                                    <h1 className="text-2xl font-bold text-gray-900">Sign In or Register</h1>
+                                    <p className="text-gray-500 text-sm mt-1">Enter your phone number to sign in or create an account</p>
                                 </div>
 
                                 {error && (
@@ -210,17 +210,14 @@ export default function LoginPage() {
                                     )}
                                 </div>
 
-                                <div className="mt-8 text-center text-xs text-gray-500">
-                                    Don&apos;t have an account?{" "}
-                                    <Link href="/register" className="text-[#1877F2] font-bold hover:underline">Create Account</Link>
+                                <div className="mt-8 text-center text-[10px] text-gray-400">
+                                    By continuing, you agree to our terms and conditions.
                                 </div>
                             </div>
                         </div>
                     </motion.div>
 
                     <p className="text-center text-[10px] text-gray-400 mt-8 leading-relaxed max-w-xs mx-auto">
-                        Test Credentials: <span className="font-bold">admin@elements.com</span> / <span className="font-bold">password123</span>
-                    <br />
                     Secure OTP will be sent to your mobile number.
                     </p>
                 </div>

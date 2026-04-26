@@ -69,6 +69,7 @@ export const authOptions: NextAuthOptions = {
                     ...session.user,
                     id: token.id,
                     role: token.role,
+                    phone: token.phone,
                     staffRole: token.staffRole,
                     permissions: token.permissions,
                 },
@@ -76,11 +77,12 @@ export const authOptions: NextAuthOptions = {
         },
         jwt: ({ token, user }) => {
             if (user) {
-                const u = user as unknown as { id: string; role: string; staffRole?: string; permissions?: string[] };
+                const u = user as unknown as { id: string; role: string; phone: string; staffRole?: string; permissions?: string[] };
                 return {
                     ...token,
                     id: u.id,
                     role: u.role,
+                    phone: u.phone,
                     staffRole: u.staffRole || 'admin',
                     permissions: u.permissions || ['all'],
                 };

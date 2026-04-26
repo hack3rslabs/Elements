@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     await sendOtp(phone, otp);
 
     return NextResponse.json({ success: true, message: 'OTP sent successfully' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[AUTH] OTP Send Error:', error);
     return NextResponse.json({ success: false, message: 'Failed to send OTP' }, { status: 500 });
   }

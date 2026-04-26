@@ -104,7 +104,7 @@ export async function resolveCategoryId({ categoryId, categoryName }: { category
     return fallback.id;
 }
 
-export function normalizeSpecifications(specifications: any): Record<string, string> {
+export function normalizeSpecifications(specifications: unknown): Record<string, string> {
     if (!specifications || typeof specifications !== 'object' || Array.isArray(specifications)) return {};
     const out: Record<string, string> = {};
     for (const [key, val] of Object.entries(specifications)) {
@@ -122,10 +122,10 @@ export function parseTagsFromKeywords(metaKeywords: string | null): string[] {
         .filter(Boolean);
 }
 
-export function computeRatingStats(reviews: any[]): { rating: number; reviewCount: number } {
+export function computeRatingStats(reviews: unknown[]): { rating: number; reviewCount: number } {
     if (!Array.isArray(reviews) || reviews.length === 0) return { rating: 0, reviewCount: 0 };
     const reviewCount = reviews.length;
-    const total = reviews.reduce((sum, r) => sum + safeNumber(r.rating, 0), 0);
+    const total = reviews.reduce((sum: number, r) => sum + safeNumber((r as { rating?: unknown }).rating, 0), 0);
     const avg = total / reviewCount;
     return { rating: Number(avg.toFixed(1)), reviewCount };
 }
@@ -137,6 +137,7 @@ export function isNewArrival(createdAt: Date | string | null): boolean {
     return Date.now() - d.getTime() <= NEW_ARRIVAL_DAYS * 24 * 60 * 60 * 1000;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function toProductDTO(product: any) {
     const images = Array.isArray(product.images) ? (product.images as string[]).filter(Boolean) : [];
     const image = images[0] || DEFAULT_PRODUCT_IMAGE;
@@ -176,6 +177,7 @@ export function toProductDTO(product: any) {
     };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function toReviewDTO(review: any) {
     return {
         id: review.id,
@@ -187,6 +189,7 @@ export function toReviewDTO(review: any) {
     };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function computeFacets(products: any[]) {
     const materials = new Set<string>();
     const finishes = new Set<string>();

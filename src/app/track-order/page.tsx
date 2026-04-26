@@ -3,7 +3,7 @@
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import {
     Search, Package, Truck,
@@ -17,11 +17,12 @@ function TrackOrderContent() {
     const initialId = searchParams.get("id") || "";
 
     const [orderId, setOrderId] = useState(initialId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
-    const handleTrack = async (idToTrack = orderId) => {
+    const handleTrack = useCallback(async (idToTrack = orderId) => {
         if (!idToTrack) return;
         setLoading(true);
         setError("");
@@ -34,17 +35,17 @@ function TrackOrderContent() {
                 setOrder(null);
                 setError(data.message || "Order not found");
             }
-        } catch (e) {
+        } catch {
             setError("Failed to fetch order details. Please try again.");
         }
         setLoading(false);
-    };
+    }, [orderId]);
 
     useEffect(() => {
         if (initialId) {
             handleTrack(initialId);
         }
-    }, [initialId]);
+    }, [initialId, handleTrack]);
 
     const getStatusIcon = (status: string) => {
         switch (status) {
@@ -123,6 +124,7 @@ function TrackOrderContent() {
                                     {/* Timeline connector */}
                                     <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gray-100" />
 
+                                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                                     {order.timeline.map((step: any, i: number) => (
                                         <div key={i} className="flex gap-6 relative">
                                             <div className={`mt-1 h-6 w-6 rounded-full border-4 border-white shadow-md z-10 ${i === 0 ? 'bg-emerald-500' : 'bg-gray-300'}`} />
@@ -154,6 +156,7 @@ function TrackOrderContent() {
                                 <div className="bg-white rounded-3xl p-6 border shadow-sm">
                                     <h3 className="text-sm font-bold mb-4">Order Summary</h3>
                                     <div className="space-y-4 mb-6">
+                                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                                         {order.items.map((item: any) => (
                                             <div key={item.productId} className="flex gap-3">
                                                 <div className="w-10 h-10 relative rounded-lg overflow-hidden shrink-0 bg-gray-50 border">
