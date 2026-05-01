@@ -40,17 +40,20 @@ export default function IntegrationsTab() {
     const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
     useEffect(() => {
-        fetch(`${API}/api/admin/integrations`, { headers: HEADERS })
-            .then(r => r.json())
-            .then(d => { if (d.success) setIntegrations(d.data); })
-            .catch(() => {
-                // Default state if backend unavailable
-                const defaultIntegrations: Record<string, Integration> = {};
-                PLATFORMS.forEach(p => {
-                    defaultIntegrations[p.key] = { enabled: false, sellerId: '', apiKey: '', lastSync: null, status: 'disconnected', leadsReceived: 0 };
+        const timer = setTimeout(() => {
+            fetch(`${API}/api/admin/integrations`, { headers: HEADERS })
+                .then(r => r.json())
+                .then(d => { if (d.success) setIntegrations(d.data); })
+                .catch(() => {
+                    // Default state if backend unavailable
+                    const defaultIntegrations: Record<string, Integration> = {};
+                    PLATFORMS.forEach(p => {
+                        defaultIntegrations[p.key] = { enabled: false, sellerId: '', apiKey: '', lastSync: null, status: 'disconnected', leadsReceived: 0 };
+                    });
+                    setIntegrations(defaultIntegrations);
                 });
-                setIntegrations(defaultIntegrations);
-            });
+        }, 0);
+        return () => clearTimeout(timer);
     }, []);
 
     const copyWebhook = (url: string) => {

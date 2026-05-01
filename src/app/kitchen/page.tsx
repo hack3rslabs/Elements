@@ -9,12 +9,23 @@ export default function KitchenPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        setLoading(true);
+        // setLoading(true); // Redundant as it's initialized to true
         fetch("/api/products?category=kitchen&limit=50")
             .then(r => r.json())
             .then(d => {
                 if (d?.success) {
-                    const mapped: Product[] = (d.data || []).map((p: any) => ({
+                    const mapped: Product[] = (d.data || []).map((p: {
+                        id: string | number;
+                        name: string;
+                        slug: string;
+                        categoryName?: string;
+                        price: number;
+                        mrp?: number;
+                        image?: string;
+                        images?: string[];
+                        rating?: number;
+                        reviewCount?: number;
+                    }) => ({
                         id: String(p.id),
                         name: String(p.name),
                         slug: String(p.slug),

@@ -3,12 +3,10 @@
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import { useState } from "react";
 import {
-    Mail, Lock, Eye, EyeOff,
     Phone, Smartphone, CheckCircle2,
-    ArrowRight, Loader2
+    Loader2
 } from "lucide-react";
 import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";

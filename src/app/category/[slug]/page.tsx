@@ -72,7 +72,7 @@ export default function CategoryPage() {
         newArrival: searchParams.get("newArrival") || "",
     });
 
-    const updateFilters = (newFilters: any) => {
+    const updateFilters = (newFilters: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
         setFilters(newFilters);
         // Update URL
         const params = new URLSearchParams();
@@ -143,7 +143,10 @@ export default function CategoryPage() {
     }, [slug, filters]);
 
     useEffect(() => {
-        fetchProducts();
+        const timer = setTimeout(() => {
+            fetchProducts();
+        }, 0);
+        return () => clearTimeout(timer);
     }, [fetchProducts]);
 
     return (
@@ -287,7 +290,7 @@ export default function CategoryPage() {
                                         <Filter className="h-8 w-8 text-gray-300" />
                                     </div>
                                     <h3 className="text-2xl font-bold text-gray-900 mb-2">No items match your filters</h3>
-                                    <p className="text-gray-500 max-w-xs mx-auto mb-8">Try adjusting your price range or selection to find what you're looking for.</p>
+                                    <p className="text-gray-500 max-w-xs mx-auto mb-8">Try adjusting your price range or selection to find what you&apos;re looking for.</p>
                                     <Button onClick={clearFilters} className="rounded-full bg-[#1877F2] hover:bg-[#0d47a1] px-8">
                                         Reset All Filters
                                     </Button>

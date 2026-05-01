@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 const isAdmin = (request: NextRequest) => {
@@ -32,8 +32,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
     });
     return NextResponse.json({ success: true, data: updated });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ success: false, message: (error as Error).message }, { status: 500 });
   }
 }
 
@@ -45,7 +45,8 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   try {
     await prisma.heroSlide.delete({ where: { id } });
     return NextResponse.json({ success: true, message: 'Slide deleted' });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ success: false, message: (error as Error).message }, { status: 500 });
   }
 }
+

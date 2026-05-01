@@ -27,8 +27,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
     });
     return NextResponse.json({ success: true, data: updated });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }
 }
 
@@ -40,7 +41,8 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   try {
     await prisma.cRMLead.delete({ where: { id } });
     return NextResponse.json({ success: true, message: 'Lead deleted' });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }
 }

@@ -3,7 +3,7 @@
 import { MessageCircle } from "lucide-react";
 
 export function WhatsAppButton({ productName, className }: { productName?: string; className?: string }) {
-    const phone = "919876543210";
+    const phone = "919995552252";
     const message = productName
         ? `Hi! I'm interested in: ${productName}. Can you share more details, pricing, and availability?`
         : "Hi! I'm interested in your products. Can you help me?";
@@ -23,7 +23,7 @@ export function WhatsAppButton({ productName, className }: { productName?: strin
 }
 
 export function FloatingWhatsApp() {
-    const phone = "919876543210";
+    const phone = "919995552252";
     const url = `https://wa.me/${phone}?text=${encodeURIComponent("Hi! I need help with your products.")}`;
 
     return (

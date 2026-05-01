@@ -220,7 +220,7 @@ export function HeroCarousel() {
                   </Link>
                 </Button>
                 <a
-                  href="tel:+919876543210"
+                  href="tel:+919995552252"
                   className="inline-flex items-center justify-center gap-2 bg-white/10 backdrop-blur-sm border border-white/30 text-white rounded-full h-11 md:h-12 px-6 text-sm font-medium hover:bg-white/20 transition-colors"
                 >
                   <Phone className="h-4 w-4" /> Call for Details

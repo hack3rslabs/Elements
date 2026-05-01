@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
@@ -57,8 +57,8 @@ export async function GET(req: Request) {
             success: true,
             data: wishlist.items.map(item => item.product)
         });
-    } catch (e: any) {
-        return NextResponse.json({ success: false, message: e.message }, { status: 500 });
+    } catch (e: unknown) {
+        return NextResponse.json({ success: false, message: (e as Error).message }, { status: 500 });
     }
 }
 
@@ -85,20 +85,25 @@ export async function POST(req: Request) {
             });
         }
 
-        // Prevent duplicates
+        // Toggle logic
         const existing = await prisma.wishlistItem.findUnique({
             where: { wishlistId_productId: { wishlistId: wishlist.id, productId } }
         });
-
-        if (!existing) {
+        
+        if (existing) {
+            await prisma.wishlistItem.delete({
+                where: { id: existing.id }
+            });
+            return NextResponse.json({ success: true, message: "Removed from wishlist" });
+        } else {
             await prisma.wishlistItem.create({
                 data: { wishlistId: wishlist.id, productId }
             });
+            return NextResponse.json({ success: true, message: "Added to wishlist" });
         }
-
-        return NextResponse.json({ success: true, message: "Added to wishlist" });
-    } catch (e: any) {
-        return NextResponse.json({ success: false, message: e.message }, { status: 500 });
+    } catch (e: unknown) {
+        return NextResponse.json({ success: false, message: (e as Error).message }, { status: 500 });
     }
 }
+
 

@@ -7,7 +7,7 @@ export function Footer() {
         <footer className="bg-[#0a0a0a] text-gray-300">
             {/* Main Footer */}
             <div className="container py-16">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {/* Brand */}
                     <div className="space-y-4">
                         <Link href="/" className="inline-block">
@@ -16,7 +16,7 @@ export function Footer() {
                                 alt="Elements - World Class Elements"
                                 width={160}
                                 height={48}
-                                className="h-12 w-auto object-contain brightness-0 invert"
+                                className="h-12 w-auto object-contain "
                             />
                         </Link>
                         <p className="text-sm text-gray-400 leading-relaxed">
@@ -65,7 +65,7 @@ export function Footer() {
                         </ul>
                     </div>
 
-                    {/* Categories */}
+                    {/* Categories
                     <div>
                         <h4 className="font-semibold text-white mb-4 text-sm uppercase tracking-wider">Categories</h4>
                         <ul className="space-y-2.5">
@@ -86,21 +86,21 @@ export function Footer() {
                                 </li>
                             ))}
                         </ul>
-                    </div>
+                    // </div> */}
 
                     {/* Branches */}
                     <div>
                         <h4 className="font-semibold text-white mb-4 text-sm uppercase tracking-wider">Our Branches</h4>
                         <ul className="space-y-4">
                             {[
-                                { city: "Visakhapatnam", addr: "Bhanu Nagar, Isukathota", href: "https://www.google.com/maps/place/Sree+Kameswari+Ceramics/@17.7417647,83.3245967,17z/data=!3m1!4b1!4m6!3m5!1s0x3a39432f1a682a31:0x23f216d34951248a!8m2!3d17.7417647!4d83.3245967!16s%2Fg%2F11fwhctm7z" },
+                                { city: "Visakhapatnam", addr: "Near krishna college , Maddilapalem", href: "https://www.google.com/maps/place/Sree+Kameswari+Ceramics/@17.7417647,83.3245967,17z/data=!3m1!4b1!4m6!3m5!1s0x3a39432f1a682a31:0x23f216d34951248a!8m2!3d17.7417647!4d83.3245967!16s%2Fg%2F11fwhctm7z" },
                                 { city: "Bangalore", addr: "Industrial Suburb, Yeswanthapur", href: "https://www.google.com/maps/search/Hindustan+Elements+Yeswanthapur" },
-                                { city: "Srikakulam", addr: "Branch Office, Srikakulam", href: "#" },
+        
                             ].map((branch) => (
                                 <li key={branch.city}>
                                     <a href={branch.href} target="_blank" rel="noopener noreferrer" className="block group">
-                                        <span className="text-sm font-semibold text-gray-300 group-hover:text-[#1877F2] transition-colors block">{branch.city}</span>
-                                        <span className="text-[11px] text-gray-500 group-hover:text-gray-400 transition-colors leading-tight">{branch.addr}</span>
+                                        <span className="text-md font-semibold text-gray-300 group-hover:text-[#1877F2] transition-colors block">{branch.city}</span>
+                                        <span className="text-sm text-gray-500 group-hover:text-gray-400 transition-colors leading-tight">{branch.addr}</span>
                                     </a>
                                 </li>
                             ))}

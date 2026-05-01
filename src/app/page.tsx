@@ -5,8 +5,6 @@ import { Footer } from "@/components/layout/footer";
 import { MobileBottomNav } from "@/components/ui/mobile-nav";
 import { useState, useEffect } from "react";
 import { Branding } from "@/components/home/branding";
-import { HeroCarousel } from "@/components/home/hero-carousel";
-import { ProductShowcase } from "@/components/home/product-showcase";
 import { CategorySection } from "@/components/home/category-section";
 import { RemainingContent } from "@/components/home/remaining-content";
 

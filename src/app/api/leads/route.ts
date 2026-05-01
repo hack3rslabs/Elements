@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
@@ -18,9 +18,10 @@ export async function POST(request: NextRequest) {
       }
     });
     return NextResponse.json({ success: true, message: 'Lead captured', data: lead }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] Leads Error:', error);
-    return NextResponse.json({ success: false, message: 'Lead capture failed', error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Lead capture failed', error: (error as Error).message }, { status: 500 });
   }
 }
+
 

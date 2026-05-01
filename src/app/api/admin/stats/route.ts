@@ -82,7 +82,8 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json({ success: true, data });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }
 }

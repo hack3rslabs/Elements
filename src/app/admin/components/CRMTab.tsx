@@ -82,7 +82,12 @@ export default function CRMTab() {
         setLoading(false);
     }, [filterStatus, filterSource, search]);
 
-    useEffect(() => { fetchLeads(); }, [fetchLeads]);
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            fetchLeads();
+        }, 0);
+        return () => clearTimeout(timer);
+    }, [fetchLeads]);
 
     const handleAddLead = async () => {
         try {
@@ -264,7 +269,7 @@ export default function CRMTab() {
                         </div>
                         <div>
                             <label className="text-xs font-medium text-gray-500 block mb-1">Phone</label>
-                            <input value={leadForm.phone} onChange={e => setLeadForm(f => ({ ...f, phone: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="+91 98765 43210" />
+                            <input value={leadForm.phone} onChange={e => setLeadForm(f => ({ ...f, phone: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="+91 99955 52252" />
                         </div>
                         <div>
                             <label className="text-xs font-medium text-gray-500 block mb-1">Source</label>

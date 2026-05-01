@@ -73,13 +73,19 @@ export default function ProductPage() {
     const [bulkName, setBulkName] = useState("");
     const [bulkPhone, setBulkPhone] = useState("");
     const [bulkSubmitted, setBulkSubmitted] = useState(false);
+    const [prevSlug, setPrevSlug] = useState(slug);
    
-    useEffect(() => {
-        if (!slug) return;
+    if (slug !== prevSlug) {
+        setPrevSlug(slug);
         setLoading(true);
         setSelectedImage(0);
         setQuantity(1);
         setActiveTab("description");
+    }
+
+    useEffect(() => {
+        if (!slug) return;
+        // setLoading(true); // Handled during render when slug changes
         fetch(`/api/products/${encodeURIComponent(slug)}`)
             .then(r => r.json())
             .then(d => {
@@ -281,10 +287,10 @@ export default function ProductPage() {
                                 <div className="flex flex-col sm:flex-row gap-2">
                                     <WhatsAppButton productName={product.name} className="h-10 px-4 text-sm font-semibold flex-1 justify-center" />
                                     <a
-                                        href="tel:+919876543210"
+                                        href="tel:+919995552252"
                                         className="inline-flex items-center justify-center gap-2 bg-[#1877F2] hover:bg-[#0d47a1] text-white rounded-full h-10 px-4 text-sm font-semibold transition-colors shadow-md flex-1"
                                     >
-                                        <Phone className="h-4 w-4" /> Call: +91 98765 43210
+                                        <Phone className="h-4 w-4" /> Call: +91 99955 52252
                                     </a>
                                 </div>
                                 <p className="text-xs text-green-700 mt-2.5 flex items-center gap-1">
@@ -557,7 +563,7 @@ export default function ProductPage() {
                                             <h5 className="text-sm font-semibold mb-2">👷 Need a Professional?</h5>
                                             <p className="text-xs text-muted-foreground mb-3">We can connect you with verified installers in your city.</p>
                                             <a
-                                                href="tel:+919876543210"
+                                                href="tel:+919995552252"
                                                 className="inline-flex items-center gap-2 text-xs text-[#1877F2] font-medium hover:underline"
                                             >
                                                 <Phone className="h-3.5 w-3.5" /> Call for Installer Referral
@@ -569,7 +575,7 @@ export default function ProductPage() {
                                             <MessageCircle className="h-4 w-4" /> Installation Support Available
                                         </p>
                                         <p className="text-xs text-green-700 mt-1">
-                                            Call <a href="tel:+919876543210" className="font-bold underline">+91 98765 43210</a> during installation — our experts will guide you live on the phone.
+                                            Call <a href="tel:+919995552252" className="font-bold underline">+91 99955 52252</a> during installation — our experts will guide you live on the phone.
                                         </p>
                                     </div>
                                 </div>
@@ -631,7 +637,7 @@ export default function ProductPage() {
                         <ShoppingCart className="h-4 w-4 mr-1.5" /> Add to Cart
                     </Button>
                     <a
-                        href={`https://wa.me/919876543210?text=${encodeURIComponent(`Hi! I need details about: ${product.name}`)}`}
+                        href={`https://wa.me/919995552252?text=${encodeURIComponent(`Hi! I need details about: ${product.name}`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="h-10 w-10 rounded-full bg-[#25D366] flex items-center justify-center text-white shadow-md shrink-0"

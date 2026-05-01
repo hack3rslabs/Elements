@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Heart, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useStore } from "@/lib/store";
 
 export interface Product {
     id: string;
@@ -20,6 +21,7 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
+    const { addToCart, toggleWishlist, isInWishlist } = useStore();
    return (
   <div className="group relative overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md  flex flex-col">
 
@@ -34,8 +36,13 @@ export function ProductCard({ product }: ProductCardProps) {
 
       {/* Wishlist Button */}
       <div className="absolute right-2 top-2 z-10 opacity-0 transition-opacity group-hover:opacity-100">
-        <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full shadow-sm">
-          <Heart className="h-4 w-4" />
+        <Button 
+          variant="secondary" 
+          size="icon" 
+          className="h-8 w-8 rounded-full shadow-sm"
+          onClick={(e) => { e.preventDefault(); toggleWishlist(product.id); }}
+        >
+          <Heart className={`h-4 w-4 ${isInWishlist(product.id) ? 'fill-red-500 text-red-500' : ''}`} />
           <span className="sr-only">Add to Wishlist</span>
         </Button>
       </div>
@@ -84,7 +91,11 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
 
         {/* Add to Cart */}
-        <Button size="icon" className="h-9 w-9">
+        <Button 
+          size="icon" 
+          className="h-9 w-9"
+          onClick={(e) => { e.preventDefault(); addToCart(product.id); }}
+        >
           <ShoppingCart className="h-4 w-4" />
           <span className="sr-only">Add to Cart</span>
         </Button>

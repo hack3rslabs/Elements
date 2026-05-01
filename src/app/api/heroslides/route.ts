@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 const isAdmin = (request: NextRequest) => {
@@ -15,8 +15,8 @@ export async function GET() {
       orderBy: { order: 'asc' },
     });
     return NextResponse.json({ success: true, data: slides });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ success: false, message: (error as Error).message }, { status: 500 });
   }
 }
 
@@ -43,7 +43,8 @@ export async function POST(request: NextRequest) {
       }
     });
     return NextResponse.json({ success: true, data: slide });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ success: false, message: (error as Error).message }, { status: 500 });
   }
 }
+

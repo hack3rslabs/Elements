@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
@@ -21,7 +21,8 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ produ
         });
 
         return NextResponse.json({ success: true });
-    } catch (e: any) {
-        return NextResponse.json({ success: false, message: e.message }, { status: 500 });
+    } catch (e: unknown) {
+        return NextResponse.json({ success: false, message: (e as Error).message }, { status: 500 });
     }
 }
+

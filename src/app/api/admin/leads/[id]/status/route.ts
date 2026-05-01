@@ -19,7 +19,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       data: { status: status.toUpperCase() }
     });
     return NextResponse.json({ success: true, data: updated });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }
 }

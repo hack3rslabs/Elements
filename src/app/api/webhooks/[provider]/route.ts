@@ -7,7 +7,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   try {
     const provider = providerParam.toLowerCase();
-    const body = await request.json();
+    const body = await request.json() as Record<string, unknown>;
     
     // Check if integration is enabled
     const integration = await prisma.integration.findUnique({ where: { platform: provider } });
@@ -16,29 +16,29 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Capture Lead Logic (Generic for now, can be specialized per provider)
-    let leadData: any = {};
+    let leadData: Record<string, string | null> = {};
     
     if (provider === 'indiamart') {
       leadData = {
-        name: body.SENDER_NAME || body.name,
-        email: body.SENDER_EMAIL || body.email,
-        phone: body.SENDER_MOBILE || body.phone,
-        message: body.QUERY_MESSAGE || body.message,
+        name: String(body.SENDER_NAME || body.name || 'IndiaMart Lead'),
+        email: String(body.SENDER_EMAIL || body.email || ''),
+        phone: String(body.SENDER_MOBILE || body.phone || ''),
+        message: String(body.QUERY_MESSAGE || body.message || ''),
       };
     } else {
       leadData = {
-        name: body.name || body.customer_name || 'Webhook Lead',
-        email: body.email || body.customer_email || '',
-        phone: body.phone || body.customer_phone || '',
-        message: body.message || body.notes || JSON.stringify(body),
+        name: String(body.name || body.customer_name || 'Webhook Lead'),
+        email: String(body.email || body.customer_email || ''),
+        phone: String(body.phone || body.customer_phone || ''),
+        message: String(body.message || body.notes || JSON.stringify(body)),
       };
     }
 
     const lead = await prisma.cRMLead.create({
       data: {
-        name: leadData.name,
-        email: leadData.email,
-        phone: leadData.phone,
+        name: leadData.name || 'Unknown',
+        email: leadData.email || '',
+        phone: leadData.phone || '',
         source: provider.toUpperCase(),
         status: 'NEW',
         notes: [{ id: 'webhook', text: `Captured via ${provider} webhook`, type: 'note', createdBy: 'System', createdAt: new Date().toISOString() }],
@@ -56,8 +56,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }).catch(() => {}); // Ignore if platform not in DB yet
 
     return NextResponse.json({ success: true, message: 'Lead captured', id: lead.id });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[Webhook] ${providerParam} Error:`, error);
-    return NextResponse.json({ success: false, message: 'Capture failed', error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Capture failed', error: (error as Error).message }, { status: 500 });
   }
 }

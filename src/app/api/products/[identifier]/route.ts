@@ -56,9 +56,10 @@ export async function GET(
     const relatedProducts = related.map(toProductDTO);
 
     return NextResponse.json({ success: true, data: { ...formatted, reviews, relatedProducts } });
-  } catch (error: any) {
-    console.error('[API] Product Detail Error:', error);
-    return NextResponse.json({ success: false, message: 'Error fetching product', error: error.message }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    console.error('[API] Product Detail Error:', err);
+    return NextResponse.json({ success: false, message: 'Error fetching product', error: err.message }, { status: 500 });
   }
 }
 
@@ -83,7 +84,7 @@ export async function PUT(
 
   try {
     const body = await request.json();
-    const data: any = {};
+    const data: Record<string, unknown> = {};
 
     if (body.name !== undefined) data.name = String(body.name);
     if (body.sku !== undefined) data.sku = String(body.sku);
@@ -99,7 +100,7 @@ export async function PUT(
       if (!Number.isFinite(mrp)) return NextResponse.json({ success: false, message: 'mrp must be a number' }, { status: 400 });
       data.mrp = mrp;
     }
-    if (body.stockStatus !== undefined) data.stockStatus = body.stockStatus as any;
+    if (body.stockStatus !== undefined) data.stockStatus = body.stockStatus as "IN_STOCK" | "OUT_OF_STOCK" | "MADE_TO_ORDER";
     if (body.stock !== undefined) {
       const stock = safeNumber(body.stock, NaN);
       if (!Number.isFinite(stock)) return NextResponse.json({ success: false, message: 'stock must be a number' }, { status: 400 });
@@ -113,7 +114,7 @@ export async function PUT(
     if (body.metaKeywords !== undefined) {
       data.metaKeywords = body.metaKeywords ? String(body.metaKeywords) : null;
     } else if (body.tags !== undefined) {
-      const tags = Array.isArray(body.tags) ? (body.tags as any[]).map((t: any) => String(t).trim()).filter(Boolean) : [];
+      const tags = Array.isArray(body.tags) ? (body.tags as unknown[]).map((t) => String(t).trim()).filter(Boolean) : [];
       data.metaKeywords = tags.length > 0 ? tags.join(', ') : null;
     }
 
@@ -135,9 +136,10 @@ export async function PUT(
       include: { category: { include: { parent: true } }, reviews: true },
     });
     return NextResponse.json({ success: true, message: 'Product updated', data: full ? toProductDTO(full) : null });
-  } catch (error: any) {
-    console.error('[API] Product Update Error:', error);
-    return NextResponse.json({ success: false, message: 'Error updating product', error: error.message }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    console.error('[API] Product Update Error:', err);
+    return NextResponse.json({ success: false, message: 'Error updating product', error: err.message }, { status: 500 });
   }
 }
 
@@ -163,8 +165,9 @@ export async function DELETE(
   try {
     await prisma.product.delete({ where: { id } });
     return NextResponse.json({ success: true, message: 'Product deleted' });
-  } catch (error: any) {
-    console.error('[API] Product Delete Error:', error);
-    return NextResponse.json({ success: false, message: 'Error deleting product', error: error.message }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    console.error('[API] Product Delete Error:', err);
+    return NextResponse.json({ success: false, message: 'Error deleting product', error: err.message }, { status: 500 });
   }
 }

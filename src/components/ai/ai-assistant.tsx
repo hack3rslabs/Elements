@@ -31,12 +31,12 @@ function getAIResponse(query: string, allProducts: { name: string; slug: string;
 
     // Contact/call
     if (q.match(/(call|contact|phone|whatsapp|reach|talk|speak|number)/)) {
-        return { role: "assistant", content: "📞 You can reach us anytime!\n\n**Phone:** +91 98765 43210\n**WhatsApp:** +91 98765 43210\n**Email:** support@hindustan-elements.com\n\n🕐 **Working Hours:** Mon-Sat, 9AM - 7PM\n\nOur product experts will guide you on:\n✅ Product selection\n✅ Installation guidance\n✅ Bulk order pricing\n✅ Site visit scheduling" };
+        return { role: "assistant", content: "📞 You can reach us anytime!\n\n**Phone:** +91 99955 52252\n**WhatsApp:** +91 99955 52252\n**Email:** support@hindustan-elements.com\n\n🕐 **Working Hours:** Mon-Sat, 9AM - 7PM\n\nOur product experts will guide you on:\n✅ Product selection\n✅ Installation guidance\n✅ Bulk order pricing\n✅ Site visit scheduling" };
     }
 
     // Pricing/bulk
     if (q.match(/(price|pricing|bulk|wholesale|discount|cost|rate|quotation|quote)/)) {
-        return { role: "assistant", content: "💰 **Bulk Order Benefits:**\n\n• 10+ units → **5% off**\n• 50+ units → **10% off**\n• 100+ units → **15% off** + Free Site Visit\n• Custom quantities → Call for special rates\n\n📞 For bulk pricing, call **+91 98765 43210** or WhatsApp us. We provide custom quotes within 2 hours!\n\n💡 **Builders & Contractors** get exclusive partner pricing." };
+        return { role: "assistant", content: "💰 **Bulk Order Benefits:**\n\n• 10+ units → **5% off**\n• 50+ units → **10% off**\n• 100+ units → **15% off** + Free Site Visit\n• Custom quantities → Call for special rates\n\n📞 For bulk pricing, call **+91 99955 52252** or WhatsApp us. We provide custom quotes within 2 hours!\n\n💡 **Builders & Contractors** get exclusive partner pricing." };
     }
 
     // Warranty
@@ -46,7 +46,7 @@ function getAIResponse(query: string, allProducts: { name: string; slug: string;
 
     // Installation
     if (q.match(/(install|installation|fitting|fix|setup|how to|guide|plumber)/)) {
-        return { role: "assistant", content: "🔧 **Installation Support:**\n\n1. **Free Installation Guide** — Included with every product\n2. **Video Tutorials** — QR code on packaging\n3. **Phone Support** — Call during installation\n4. **Professional Referral** — We can connect you with trusted installers in your area\n\n📞 Need help? Call **+91 98765 43210**\n\n💡 Pro tip: Most of our products are designed for **easy DIY installation** with standard tools." };
+        return { role: "assistant", content: "🔧 **Installation Support:**\n\n1. **Free Installation Guide** — Included with every product\n2. **Video Tutorials** — QR code on packaging\n3. **Phone Support** — Call during installation\n4. **Professional Referral** — We can connect you with trusted installers in your area\n\n📞 Need help? Call **+91 99955 52252**\n\n💡 Pro tip: Most of our products are designed for **easy DIY installation** with standard tools." };
     }
 
     // Delivery
@@ -64,13 +64,13 @@ function getAIResponse(query: string, allProducts: { name: string; slug: string;
         const topProducts = matchedProducts.slice(0, 4);
         return {
             role: "assistant",
-            content: `I found **${matchedProducts.length} product${matchedProducts.length > 1 ? 's' : ''}** matching your query! Here are the top picks:\n\n📞 Need help choosing? Call **+91 98765 43210** — our experts will guide you based on your project requirements.`,
+            content: `I found **${matchedProducts.length} product${matchedProducts.length > 1 ? 's' : ''}** matching your query! Here are the top picks:\n\n📞 Need help choosing? Call **+91 99955 52252** — our experts will guide you based on your project requirements.`,
             products: topProducts.map(p => ({ name: p.name, slug: p.slug, price: p.price, image: p.image })),
         };
     }
 
     // Default
-    return { role: "assistant", content: "I'd be happy to help! Unfortunately, I couldn't find an exact match. Here's what I can help with:\n\n• 🍳 **Kitchen Sinks** — Stainless steel, granite, ceramic\n• 🏠 **Flooring** — PVC guard sheets, rubber mats\n• 🏗️ **Elevation** — Mitti Magic terracotta panels\n• 🎨 **Tiles** — Printed, vitrified, mosaic\n\nYou can also:\n📞 **Call us:** +91 98765 43210\n💬 **WhatsApp:** +91 98765 43210\n\nOur experts are available Mon-Sat, 9 AM - 7 PM!" };
+    return { role: "assistant", content: "I'd be happy to help! Unfortunately, I couldn't find an exact match. Here's what I can help with:\n\n• 🍳 **Kitchen Sinks** — Stainless steel, granite, ceramic\n• 🏠 **Flooring** — PVC guard sheets, rubber mats\n• 🏗️ **Elevation** — Mitti Magic terracotta panels\n• 🎨 **Tiles** — Printed, vitrified, mosaic\n\nYou can also:\n📞 **Call us:** +91 99955 52252\n💬 **WhatsApp:** +91 99955 52252\n\nOur experts are available Mon-Sat, 9 AM - 7 PM!" };
 }
 
 export function AIAssistant() {
@@ -135,7 +135,7 @@ export function AIAssistant() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <a href="tel:+919876543210" aria-label="Call us" className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+                            <a href="tel:+919995552252" aria-label="Call us" className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
                                 <Phone className="h-4 w-4" />
                             </a>
                             <button onClick={() => setOpen(false)} aria-label="Close chat" className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">

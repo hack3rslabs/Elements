@@ -247,7 +247,7 @@ model Setting {
   storeName           String   @default("Hindustan Elements")
   tagline             String?  @default("Premium Building Elements")
   supportEmail        String?  @default("support@hindustan-elements.com")
-  contactPhone        String?  @default("+91 98765 43210")
+  contactPhone        String?  @default("+91 99955 52252")
   freeShippingAbove   Decimal  @db.Decimal(10, 2) @default(5000)
   deliveryTime        String?  @default("3-7 Business Days")
   gstNumber           String?

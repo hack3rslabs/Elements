@@ -39,7 +39,8 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, data: formatted });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

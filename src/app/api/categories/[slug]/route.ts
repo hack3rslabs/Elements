@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(
@@ -30,12 +30,13 @@ export async function GET(
     }
 
     return NextResponse.json({ success: true, data: category });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] Category Detail Fetch Error:', error);
     return NextResponse.json({ 
       success: false, 
       message: 'Error fetching category', 
-      error: error.message 
+      error: (error as Error).message 
     }, { status: 500 });
   }
 }
+

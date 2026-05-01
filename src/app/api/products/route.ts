@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { 
   toProductDTO, 
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   const materials = toStringArray(searchParams.getAll('material'));
   const finishes = toStringArray(searchParams.getAll('finish'));
 
-  const where: any = {};
+  const where: Record<string, unknown> = {};
 
   if (category) {
     where.category = {
@@ -50,9 +50,10 @@ export async function GET(request: NextRequest) {
   }
 
   if (minPrice || maxPrice) {
-    where.price = {};
-    if (minPrice) where.price.gte = Number(minPrice);
-    if (maxPrice) where.price.lte = Number(maxPrice);
+    const priceWhere: Record<string, number> = {};
+    if (minPrice) priceWhere.gte = Number(minPrice);
+    if (maxPrice) priceWhere.lte = Number(maxPrice);
+    where.price = priceWhere;
   }
 
   if (stockStatus) {
@@ -109,9 +110,11 @@ export async function GET(request: NextRequest) {
       facets,
       pagination: { total, page: pageNum, limit: limitNum, pages },
     });
-  } catch (error: any) {
-    console.error('[API] Products Fetch Error:', error);
-    return NextResponse.json({ success: false, message: 'Failed to fetch products', error: error.message }, { status: 500 });
+
+  } catch (error) {
+    const err = error as Error;
+    console.error('[API] Products Fetch Error:', err);
+    return NextResponse.json({ success: false, message: 'Failed to fetch products', error: err.message }, { status: 500 });
   }
 }
 
@@ -153,7 +156,7 @@ export async function POST(request: NextRequest) {
 
     let tags: string[] = [];
     if (Array.isArray(body.tags)) {
-      tags = (body.tags as any[]).map((t: any) => String(t).trim()).filter(Boolean);
+      tags = (body.tags as unknown[]).map((t) => String(t).trim()).filter(Boolean);
     } else if (typeof body.tags === 'string' && body.tags.trim()) {
       tags = body.tags.split(',').map((t: string) => t.trim()).filter(Boolean);
     }
@@ -169,7 +172,7 @@ export async function POST(request: NextRequest) {
         description: body.description ? String(body.description) : undefined,
         price,
         mrp,
-        stockStatus: body.stockStatus ? (body.stockStatus as any) : undefined,
+        stockStatus: body.stockStatus ? (body.stockStatus as "IN_STOCK" | "OUT_OF_STOCK" | "MADE_TO_ORDER") : undefined,
         stock: body.stock !== undefined ? safeNumber(body.stock) : undefined,
         images,
         specifications: body.specifications && typeof body.specifications === 'object' ? body.specifications : undefined,
@@ -186,11 +189,13 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, message: 'Product created', data: full ? toProductDTO(full) : toProductDTO(created) }, { status: 201 });
-  } catch (error: any) {
-    console.error('[API] Product Create Error:', error);
+  } catch (error) {
+    const err = error as { code?: string; meta?: { target?: string[] }; message?: string };
+    console.error('[API] Product Create Error:', err);
     let message = 'Error creating product';
-    if (error.code === 'P2002') message = `A product with that ${error.meta?.target?.join(', ') || 'SKU or slug'} already exists.`;
-    return NextResponse.json({ success: false, message, error: error.message }, { status: 500 });
+    if (err.code === 'P2002') message = `A product with that ${err.meta?.target?.join(', ') || 'SKU or slug'} already exists.`;
+    return NextResponse.json({ success: false, message, error: err.message }, { status: 500 });
   }
 }
+
 

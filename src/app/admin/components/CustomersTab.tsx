@@ -1,9 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
 import {
-    Users, Search, Mail, MessageSquare, Bell, MoreVertical,
+    Search, Mail, MessageSquare, Bell, MoreVertical,
     Filter, ShoppingBag, IndianRupee, ArrowRight, Download,
-    CheckCircle2, XCircle, Clock, ExternalLink
+    CheckCircle2, XCircle, Clock
 } from "lucide-react";
 
 interface Customer {
@@ -27,23 +27,25 @@ export default function CustomersTab({ api, headers, showToast }: { api: string;
     const [messageText, setMessageText] = useState("");
 
     useEffect(() => {
-        setLoading(true);
-        fetch(`${api}/api/admin/customers`, { headers })
-            .then(r => r.json())
-            .then(d => {
-                if (d.success) setCustomers(d.data);
-                setLoading(false);
-            })
-            .catch(() => {
-                // Fallback dummy data for development
-                setCustomers([
-                    { id: '1', name: 'Raj Kumar', email: 'raj@example.com', phone: '+91 9876543210', totalOrders: 5, totalSpend: 15400, lastOrder: '2026-02-20', status: 'active', joined: '2025-10-15' },
-                    { id: '2', name: 'Amit Singh', email: 'amit@example.com', phone: '+91 8765432109', totalOrders: 2, totalSpend: 4200, lastOrder: '2026-01-10', status: 'active', joined: '2025-11-20' },
-                    { id: '3', name: 'Suresh Patil', email: 'suresh@example.com', phone: '+91 7654321098', totalOrders: 12, totalSpend: 85000, lastOrder: '2026-02-25', status: 'active', joined: '2025-05-10' },
-                    { id: '4', name: 'Priya Verma', email: 'priya@example.com', phone: '+91 6543210987', totalOrders: 0, totalSpend: 0, lastOrder: null, status: 'inactive', joined: '2026-02-01' },
-                ]);
-                setLoading(false);
-            });
+        const timer = setTimeout(() => {
+            setLoading(true);
+            fetch(`${api}/api/admin/customers`, { headers })
+                .then(r => r.json())
+                .then(d => {
+                    if (d.success) setCustomers(d.data);
+                    setLoading(false);
+                })
+                .catch(() => {
+                    // Fallback dummy data for development
+                    setCustomers([
+                        { id: '1', name: 'Raj Kumar', email: 'raj@example.com', phone: '+91 9995552252', totalOrders: 5, totalSpend: 15400, lastOrder: '2026-02-20', status: 'active', joined: '2025-10-15' },
+                        { id: '2', name: 'Anita Sharma', email: 'anita@example.com', phone: '+91 9884441141', totalOrders: 2, totalSpend: 8200, lastOrder: '2026-02-15', status: 'active', joined: '2025-12-05' },
+                        { id: '3', name: 'Vikram Singh', email: 'vikram@example.com', phone: '+91 9773330030', totalOrders: 0, totalSpend: 0, lastOrder: null, status: 'inactive', joined: '2026-01-10' },
+                    ]);
+                    setLoading(false);
+                });
+        }, 0);
+        return () => clearTimeout(timer);
     }, [api, headers]);
 
     const handleSendMessage = () => {

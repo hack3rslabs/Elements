@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { v4 as uuidv4 } from 'uuid';
 
+interface FollowUp {
+  id: string;
+  scheduledAt: string;
+  type: string;
+  note: string;
+  status: string;
+  createdAt: string;
+}
+
 const isAdmin = (request: NextRequest) => {
   const apiKey = request.headers.get('x-admin-key') || request.headers.get('x-api-key');
   const ADMIN_API_KEY = process.env.ADMIN_API_KEY || 'elements-admin-secret-2026';
@@ -18,7 +27,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const lead = await prisma.cRMLead.findUnique({ where: { id } });
     if (!lead) return NextResponse.json({ success: false, message: 'Lead not found' }, { status: 404 });
 
-    const newFollowUp = {
+    const newFollowUp: FollowUp = {
       id: uuidv4(),
       scheduledAt,
       type,
@@ -27,15 +36,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       createdAt: new Date().toISOString()
     };
 
-    const updatedFollowUps = [...(lead.followUps as any[]), newFollowUp];
+    const updatedFollowUps = [...(lead.followUps as unknown as FollowUp[]), newFollowUp];
 
     const updated = await prisma.cRMLead.update({
       where: { id },
-      data: { followUps: updatedFollowUps }
+      data: { followUps: updatedFollowUps as any }
     });
 
     return NextResponse.json({ success: true, data: updated });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error('[API] Followup Create Error:', error);
+    return NextResponse.json({ success: false, message: (error as Error).message }, { status: 500 });
   }
 }

@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   const source = searchParams.get('source');
   const search = searchParams.get('search');
 
-  const where: any = {};
+  const where: Record<string, unknown> = {};
   if (status && status !== 'all') where.status = status.toUpperCase();
   if (source && source !== 'all') where.source = source.toUpperCase();
   if (search) {
@@ -43,12 +43,13 @@ export async function GET(request: NextRequest) {
       source: l.source?.toLowerCase() || 'manual',
       notes: l.notes || [],
       followUps: l.followUps || [],
-      value: (l as any).value || 0, // Fallback if field not in schema yet
+      value: Number((l as { value?: unknown }).value || 0), // Fallback if field not in schema yet
     }));
 
     return NextResponse.json({ success: true, data: formatted });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }
 }
 
@@ -69,7 +70,8 @@ export async function POST(request: NextRequest) {
       }
     });
     return NextResponse.json({ success: true, data: lead });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }
 }

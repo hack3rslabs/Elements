@@ -43,6 +43,7 @@ interface HeroSlide {
     color: string; highlight: string; priceRange: string;
     status: string; order: number;
 }
+interface StaffMember { id: string; name: string; email: string; phone: string; role: string; permissions: string[]; }
 interface DashStats {
     totalProducts: number; totalOrders: number; totalRevenue: string; todayOrders: number;
     totalLeads: number; totalSubscribers: number; totalCustomers: number; weeklyLeads: number;
@@ -91,7 +92,7 @@ export default function AdminPage() {
     const [showTaskForm, setShowTaskForm] = useState(false);
     const [taskForm, setTaskForm] = useState({ title: '', priority: 'medium' as Task['priority'], assignee: '', due: '' });
     const [pageSeo, setPageSeo] = useState<PageSeo[]>([]);
-    const [staff, setStaff] = useState<any[]>([]);
+    const [staff, setStaff] = useState<StaffMember[]>([]);
     const [editingSeo, setEditingSeo] = useState<string | null>(null);
     const [toast, setToast] = useState('');
     const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
@@ -122,7 +123,7 @@ export default function AdminPage() {
             }
 
             // Parse the JSON response
-            let d: any;
+            let d: { success?: boolean; data?: unknown; message?: string; error?: string };
             try {
                 d = await res.json();
             } catch {
@@ -136,19 +137,20 @@ export default function AdminPage() {
             }
 
             if (editingSlide) {
-                setHeroSlides(prev => prev.map(s => s.id === editingSlide.id ? d.data : s));
+                setHeroSlides(prev => prev.map(s => s.id === editingSlide.id ? d.data as HeroSlide : s));
                 showToast('Slide updated!');
             } else {
-                setHeroSlides(prev => [...prev, d.data]);
+                setHeroSlides(prev => [...prev, d.data as HeroSlide]);
                 showToast('Slide created!');
             }
             setShowSlideForm(false); setEditingSlide(null); setSlideForm(EMPTY_SLIDE_FORM);
-        } catch (err: any) {
-            console.error('[HeroSlides] Save error:', err);
-            if (err?.message?.includes('fetch') || err?.name === 'TypeError') {
+        } catch (err) {
+            const error = err as Error;
+            console.error('[HeroSlides] Save error:', error);
+            if (error?.message?.includes('fetch') || error?.name === 'TypeError') {
                 setSlideFormError(`Cannot connect to the server. Make sure the application is running.`);
             } else {
-                setSlideFormError(`Error: ${err?.message || 'Unknown error. Check browser console for details.'}`);
+                setSlideFormError(`Error: ${error?.message || 'Unknown error. Check browser console for details.'}`);
             }
         }
     };
@@ -171,7 +173,7 @@ export default function AdminPage() {
     };
 
     const fetchData = useCallback(async () => {
-        const fetchSafely = async (url: string, opts?: any) => {
+        const fetchSafely = async (url: string, opts?: RequestInit) => {
             try {
                 const res = await fetch(url, opts);
                 if (!res.ok) return null;
@@ -190,19 +192,22 @@ export default function AdminPage() {
             fetchSafely(`${API}/api/admin/heroslides`, { headers: HEADERS }),
         ]);
 
-        if (prodData?.success) setProducts(prodData.data);
-        if (statsData?.success) setDashStats(statsData.data);
-        if (seoData?.success) setPageSeo(seoData.data);
-        if (bannerData?.success) setBanners(bannerData.data);
-        if (campData?.success) setCampaigns(campData.data);
-        if (settingsData?.success) setSettingsForm(settingsData.data);
-        if (staffData?.success) setStaff(staffData.data);
-        if (heroData?.success) setHeroSlides(heroData.data);
+        if (prodData?.success) setProducts(prodData.data as Product[]);
+        if (statsData?.success) setDashStats(statsData.data as DashStats);
+        if (seoData?.success) setPageSeo(seoData.data as PageSeo[]);
+        if (bannerData?.success) setBanners(bannerData.data as Banner[]);
+        if (campData?.success) setCampaigns(campData.data as Campaign[]);
+        if (settingsData?.success) setSettingsForm(settingsData.data as typeof settingsForm);
+        if (staffData?.success) setStaff(staffData.data as StaffMember[]);
+        if (heroData?.success) setHeroSlides(heroData.data as HeroSlide[]);
     }, []);
 
     useEffect(() => {
         if (status === "authenticated") {
-            fetchData();
+            const timer = setTimeout(() => {
+                void fetchData();
+            }, 0);
+            return () => clearTimeout(timer);
         } else if (status === "unauthenticated") {
             router.push("/login?callbackUrl=/admin");
         }
@@ -215,7 +220,7 @@ export default function AdminPage() {
                 body: JSON.stringify({ name: productForm.name, price: Number(productForm.price), mrp: Number(productForm.mrp), categoryName: productForm.category, stock: Number(productForm.stock), description: productForm.description, sku: productForm.sku, metaTitle: productForm.metaTitle, metaDescription: productForm.metaDescription, tags: productForm.tags.split(',').map(t => t.trim()).filter(Boolean), images: productForm.images.split(',').map(i => i.trim()).filter(Boolean) }),
             });
             const data = await res.json();
-            if (data.success && data.data) { setProducts(prev => [data.data, ...prev]); showToast('Product added!'); }
+            if (data.success && data.data) { setProducts(prev => [data.data as Product, ...prev]); showToast('Product added!'); }
         } catch { showToast('Saved locally'); }
         setShowProductForm(false);
         setProductForm({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' });
@@ -626,7 +631,7 @@ export default function AdminPage() {
                             <div className="bg-white rounded-2xl border shadow-sm overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-gray-50 border-b"><tr><th className="text-left p-3 font-medium text-xs text-gray-500">Product</th><th className="text-left p-3 font-medium text-xs text-gray-500 hidden md:table-cell">Category</th><th className="text-right p-3 font-medium text-xs text-gray-500">Price</th><th className="text-center p-3 font-medium text-xs text-gray-500 hidden lg:table-cell">Stock</th><th className="text-center p-3 font-medium text-xs text-gray-500 hidden lg:table-cell">Rating</th><th className="text-right p-3 font-medium text-xs text-gray-500">Actions</th></tr></thead><tbody>
                                 {filteredProducts.map(p => (
                                     <tr key={p.id} className="border-b hover:bg-gray-50 transition-colors">
-                                        <td className="p-3"><div className="flex items-center gap-3"><div className="h-10 w-10 rounded-lg bg-gray-100 overflow-hidden shrink-0"><img src={p.images?.[0] || '/images/products/kicjen sunk 1.webp'} alt={p.name} className="w-full h-full object-cover" /></div><div className="min-w-0"><p className="font-medium text-xs md:text-sm">{p.name}</p><p className="text-[10px] text-gray-400">SKU: {p.sku}</p></div></div></td>
+                                        <td className="p-3"><div className="flex items-center gap-3"><div className="h-10 w-10 rounded-lg bg-gray-100 overflow-hidden shrink-0"><Image src={p.images?.[0] || '/images/products/kicjen sunk 1.webp'} alt={p.name} width={40} height={40} className="w-full h-full object-cover" /></div><div className="min-w-0"><p className="font-medium text-xs md:text-sm">{p.name}</p><p className="text-[10px] text-gray-400">SKU: {p.sku}</p></div></div></td>
                                         <td className="p-3 text-xs text-gray-400 hidden md:table-cell">{p.categoryName}</td>
                                         <td className="p-3 text-right"><span className="font-medium text-xs">₹{p.price.toLocaleString()}</span>{p.mrp > p.price && <span className="text-[10px] text-gray-400 line-through block">₹{p.mrp.toLocaleString()}</span>}</td>
                                         <td className="p-3 text-center hidden lg:table-cell"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.stockStatus === 'IN_STOCK' ? 'bg-green-100 text-green-700' : p.stockStatus === 'MADE_TO_ORDER' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{p.stock > 0 ? p.stock : p.stockStatus.replace(/_/g, ' ')}</span></td>
@@ -762,7 +767,7 @@ export default function AdminPage() {
                                                         <td className="p-3">
                                                             <div className="flex items-center gap-3">
                                                                 <div className="h-12 w-20 rounded-xl overflow-hidden shrink-0 bg-gray-100">
-                                                                    {slide.image && <img src={slide.image} alt={slide.title} className="w-full h-full object-cover" />}
+                                                                    {slide.image && <Image src={slide.image} alt={slide.title} width={80} height={48} className="w-full h-full object-cover" />}
                                                                 </div>
                                                                 <div className="min-w-0">
                                                                     <p className="font-semibold text-xs md:text-sm truncate max-w-[160px]">{slide.title}</p>
@@ -836,7 +841,7 @@ export default function AdminPage() {
                                         <div><label className="text-xs font-medium text-gray-500 block mb-1">Position</label><select value={bannerForm.position} onChange={e => setBannerForm(f => ({ ...f, position: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm bg-white" aria-label="Position"><option value="hero">Hero</option><option value="sidebar">Sidebar</option><option value="footer">Footer</option><option value="popup">Popup</option></select></div>
                                     </div>
                                     <p className="text-[10px] text-gray-400 mt-3">📸 Place banner images in <code className="bg-gray-100 px-1 rounded">public/images/banners/</code>. Recommended: 1920×600px (WebP/JPG, max 5MB)</p>
-                                    <div className="flex justify-end gap-3 mt-4"><button onClick={() => setShowBannerForm(false)} className="px-4 py-2 rounded-full border text-sm font-medium hover:bg-gray-50">Cancel</button><button onClick={async () => { try { const res = await fetch(`${API}/api/admin/banners`, { method: 'POST', headers: HEADERS, body: JSON.stringify(bannerForm) }); const d = await res.json(); if (d.success) { setBanners(prev => [...prev, d.data]); showToast('Banner added!'); } else { showToast(d.message); } } catch { showToast('Error adding banner'); } setShowBannerForm(false); setBannerForm({ title: '', image: '', link: '/', position: 'hero' }); }} className="px-6 py-2 rounded-full bg-[#1877F2] text-white text-sm font-medium hover:bg-[#0d47a1] shadow-md flex items-center gap-2"><Save className="h-4 w-4" /> Save</button></div>
+                                    <div className="flex justify-end gap-3 mt-4"><button onClick={() => setShowBannerForm(false)} className="px-4 py-2 rounded-full border text-sm font-medium hover:bg-gray-50">Cancel</button><button onClick={async () => { try { const res = await fetch(`${API}/api/admin/banners`, { method: 'POST', headers: HEADERS, body: JSON.stringify(bannerForm) }); const d = await res.json(); if (d.success) { setBanners(prev => [...prev, d.data as Banner]); showToast('Banner added!'); } else { showToast(d.message); } } catch { showToast('Error adding banner'); } setShowBannerForm(false); setBannerForm({ title: '', image: '', link: '/', position: 'hero' }); }} className="px-6 py-2 rounded-full bg-[#1877F2] text-white text-sm font-medium hover:bg-[#0d47a1] shadow-md flex items-center gap-2"><Save className="h-4 w-4" /> Save</button></div>
                                 </div>
                             )}
                             {banners.length === 0 && !showBannerForm ? <div className="bg-white rounded-2xl border shadow-sm p-8 text-center text-gray-400"><Upload className="h-10 w-10 mx-auto mb-3 text-gray-300" /><p className="text-sm font-medium">No banners yet</p><p className="text-xs mt-1">Add your first banner to display on the storefront.</p></div> : (
@@ -844,7 +849,7 @@ export default function AdminPage() {
                                     <div key={b.id} className="bg-white rounded-2xl border shadow-sm p-4 flex items-center gap-4">
                                         <div className="h-16 w-28 bg-gray-100 rounded-xl overflow-hidden shrink-0">{b.image && <img src={b.image} alt={b.title} className="w-full h-full object-cover" />}</div>
                                         <div className="flex-1 min-w-0"><p className="font-medium text-sm truncate">{b.title}</p><p className="text-[10px] text-gray-400">{b.position} • {b.link}</p></div>
-                                        <button onClick={async () => { try { const res = await fetch(`${API}/api/admin/banners/${b.id}/toggle`, { method: 'PATCH', headers: HEADERS }); const d = await res.json(); if (d.success) setBanners(prev => prev.map(x => x.id === b.id ? d.data : x)); } catch { } }} className={`text-xs px-3 py-1 rounded-full font-medium ${b.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{b.active ? 'Active' : 'Inactive'}</button>
+                                        <button onClick={async () => { try { const res = await fetch(`${API}/api/admin/banners/${b.id}/toggle`, { method: 'PATCH', headers: HEADERS }); const d = await res.json(); if (d.success) setBanners(prev => prev.map(x => x.id === b.id ? d.data as Banner : x)); } catch { } }} className={`text-xs px-3 py-1 rounded-full font-medium ${b.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{b.active ? 'Active' : 'Inactive'}</button>
                                         <button onClick={async () => { try { await fetch(`${API}/api/admin/banners/${b.id}`, { method: 'DELETE', headers: HEADERS }); setBanners(prev => prev.filter(x => x.id !== b.id)); showToast('Banner deleted'); } catch { } }} className="h-8 w-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100"><Trash2 className="h-3.5 w-3.5" /></button>
                                     </div>
                                 ))}</div>
@@ -879,7 +884,7 @@ export default function AdminPage() {
                         <div className="space-y-4">
                             <div className="flex items-center justify-between"><p className="text-sm text-gray-400">{campaigns.length} campaigns</p><button onClick={() => setShowCampaignForm(true)} className="inline-flex items-center gap-2 bg-[#1877F2] text-white rounded-full px-4 py-2 text-sm font-medium hover:bg-[#0d47a1] shadow-md"><Plus className="h-4 w-4" /> New Campaign</button></div>
                             {showCampaignForm && (
-                                <div className="bg-white rounded-2xl border p-5"><h4 className="font-semibold mb-3">New Campaign</h4><div className="grid grid-cols-1 md:grid-cols-4 gap-3"><div className="md:col-span-2"><input value={campaignForm.name} onChange={e => setCampaignForm(t => ({ ...t, name: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm" placeholder="Campaign Name" /></div><select value={campaignForm.platform} onChange={e => setCampaignForm(t => ({ ...t, platform: e.target.value }))} className="h-10 rounded-xl border px-3 text-sm bg-white" aria-label="Platform"><option value="google">Google Ads</option><option value="meta">Meta Ads</option><option value="email">Email</option></select><input type="number" value={campaignForm.budget} onChange={e => setCampaignForm(t => ({ ...t, budget: e.target.value }))} className="h-10 rounded-xl border px-3 text-sm" placeholder="Budget (₹)" /><button onClick={async () => { try { const req = await fetch(`${API}/api/admin/campaigns`, { method: 'POST', headers: HEADERS, body: JSON.stringify(campaignForm) }); const res = await req.json(); if (res.success) { setCampaigns(p => [...p, res.data]); setShowCampaignForm(false); setCampaignForm({ name: '', platform: 'google', budget: '' }); showToast('Campaign added'); } } catch { } }} className="bg-[#1877F2] text-white rounded-full h-10 text-sm font-medium">Add</button><button onClick={() => setShowCampaignForm(false)} className="border rounded-full h-10 text-sm hover:bg-gray-50">Cancel</button></div></div>
+                                <div className="bg-white rounded-2xl border p-5"><h4 className="font-semibold mb-3">New Campaign</h4><div className="grid grid-cols-1 md:grid-cols-4 gap-3"><div className="md:col-span-2"><input value={campaignForm.name} onChange={e => setCampaignForm(t => ({ ...t, name: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm" placeholder="Campaign Name" /></div><select value={campaignForm.platform} onChange={e => setCampaignForm(t => ({ ...t, platform: e.target.value }))} className="h-10 rounded-xl border px-3 text-sm bg-white" aria-label="Platform"><option value="google">Google Ads</option><option value="meta">Meta Ads</option><option value="email">Email</option></select><input type="number" value={campaignForm.budget} onChange={e => setCampaignForm(t => ({ ...t, budget: e.target.value }))} className="h-10 rounded-xl border px-3 text-sm" placeholder="Budget (₹)" /><button onClick={async () => { try { const req = await fetch(`${API}/api/admin/campaigns`, { method: 'POST', headers: HEADERS, body: JSON.stringify(campaignForm) }); const res = await req.json(); if (res.success) { setCampaigns(p => [...p, res.data as Campaign]); setShowCampaignForm(false); setCampaignForm({ name: '', platform: 'google', budget: '' }); showToast('Campaign added'); } } catch { } }} className="bg-[#1877F2] text-white rounded-full h-10 text-sm font-medium">Add</button><button onClick={() => setShowCampaignForm(false)} className="border rounded-full h-10 text-sm hover:bg-gray-50">Cancel</button></div></div>
                             )}
                             {campaigns.length === 0 && !showCampaignForm ? <div className="bg-white rounded-2xl border p-8 text-center text-gray-400"><Megaphone className="h-10 w-10 mx-auto mb-2 text-gray-300" /><p className="text-sm font-medium">No campaigns yet</p><p className="text-xs mt-1">Create marketing campaigns to track ad spend and conversions.</p></div> : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -896,8 +901,8 @@ export default function AdminPage() {
                                                 <div><div className="text-[10px] text-gray-400 uppercase tracking-widest">Conv.</div><div className="font-bold text-sm text-green-500">{c.conversions}</div></div>
                                             </div>
                                             <div className="flex gap-2">
-                                                {c.status !== 'active' && <button onClick={async () => { const req = await fetch(`${API}/api/admin/campaigns/${c.id}`, { method: 'PUT', headers: HEADERS, body: JSON.stringify({ status: 'active' }) }); const res = await req.json(); if (res.success) setCampaigns(prev => prev.map(x => x.id === c.id ? res.data : x)); }} className="flex-1 text-[10px] font-bold bg-green-50 text-green-700 py-1.5 rounded-md">Activate</button>}
-                                                {c.status === 'active' && <button onClick={async () => { const req = await fetch(`${API}/api/admin/campaigns/${c.id}`, { method: 'PUT', headers: HEADERS, body: JSON.stringify({ status: 'paused' }) }); const res = await req.json(); if (res.success) setCampaigns(prev => prev.map(x => x.id === c.id ? res.data : x)); }} className="flex-1 text-[10px] font-bold bg-yellow-50 text-yellow-700 py-1.5 rounded-md">Pause</button>}
+                                                {c.status !== 'active' && <button onClick={async () => { const req = await fetch(`${API}/api/admin/campaigns/${c.id}`, { method: 'PUT', headers: HEADERS, body: JSON.stringify({ status: 'active' }) }); const res = await req.json(); if (res.success) setCampaigns(prev => prev.map(x => x.id === c.id ? res.data as Campaign : x)); }} className="flex-1 text-[10px] font-bold bg-green-50 text-green-700 py-1.5 rounded-md">Activate</button>}
+                                                {c.status === 'active' && <button onClick={async () => { const req = await fetch(`${API}/api/admin/campaigns/${c.id}`, { method: 'PUT', headers: HEADERS, body: JSON.stringify({ status: 'paused' }) }); const res = await req.json(); if (res.success) setCampaigns(prev => prev.map(x => x.id === c.id ? res.data as Campaign : x)); }} className="flex-1 text-[10px] font-bold bg-yellow-50 text-yellow-700 py-1.5 rounded-md">Pause</button>}
                                                 <button onClick={async () => { const req = await fetch(`${API}/api/admin/campaigns/${c.id}`, { method: 'DELETE', headers: HEADERS }); const res = await req.json(); if (res.success) setCampaigns(prev => prev.filter(x => x.id !== c.id)); }} className="h-7 w-7 bg-red-50 text-red-500 rounded-md flex items-center justify-center shrink-0"><Trash2 className="h-3 w-3" /></button>
                                             </div>
                                         </div>

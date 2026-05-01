@@ -8,29 +8,50 @@ import { useSearchParams } from "next/navigation";
 import {
     Search, Package, Truck,
     CheckCircle2, Clock, MapPin,
-    AlertCircle, ChevronRight, Ban
+    AlertCircle, Ban
 } from "lucide-react";
 import Image from "next/image";
+
+interface Order {
+    id: string;
+    status: string;
+    items: {
+        productId: string;
+        quantity: number;
+        product: {
+            name: string;
+            image: string;
+            price: number;
+        };
+    }[];
+    total: number;
+    subtotal: number;
+    shipping: number;
+    createdAt: string;
+    timeline: { status: string; time: string; description: string; }[];
+    customer: { address: string; city: string; state: string; pincode: string; };
+    transportChoice: string;
+}
 
 function TrackOrderContent() {
     const searchParams = useSearchParams();
     const initialId = searchParams.get("id") || "";
 
     const [orderId, setOrderId] = useState(initialId);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [order, setOrder] = useState<any>(null);
+    const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
+    const [error, setError] = useState<string>("");
 
     const handleTrack = useCallback(async (idToTrack = orderId) => {
         if (!idToTrack) return;
+        await Promise.resolve(); // Avoid synchronous setState in effect
         setLoading(true);
         setError("");
         try {
             const res = await fetch(`/api/orders/${idToTrack}`);
             const data = await res.json();
             if (data.success) {
-                setOrder(data.data);
+                setOrder(data.data as Order);
             } else {
                 setOrder(null);
                 setError(data.message || "Order not found");
@@ -43,7 +64,7 @@ function TrackOrderContent() {
 
     useEffect(() => {
         if (initialId) {
-            handleTrack(initialId);
+            void Promise.resolve().then(() => handleTrack(initialId));
         }
     }, [initialId, handleTrack]);
 
@@ -124,8 +145,7 @@ function TrackOrderContent() {
                                     {/* Timeline connector */}
                                     <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gray-100" />
 
-                                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                    {order.timeline.map((step: any, i: number) => (
+                                    {(order.timeline || []).map((step, i) => (
                                         <div key={i} className="flex gap-6 relative">
                                             <div className={`mt-1 h-6 w-6 rounded-full border-4 border-white shadow-md z-10 ${i === 0 ? 'bg-emerald-500' : 'bg-gray-300'}`} />
                                             <div>
@@ -139,7 +159,7 @@ function TrackOrderContent() {
                                     ))}
 
                                     {/* Future steps */}
-                                    {['Processing', 'In Transit', 'Out for Delivery', 'Delivered'].slice(order.timeline.length - 1).map((step, i) => (
+                                    {['Processing', 'In Transit', 'Out for Delivery', 'Delivered'].slice((order.timeline?.length || 0) - 1).map((step) => (
                                         <div key={step} className="flex gap-6 relative opacity-20 filter grayscale">
                                             <div className="mt-1 h-6 w-6 rounded-full border-4 border-white shadow-md bg-gray-200 z-10" />
                                             <div>
@@ -156,8 +176,7 @@ function TrackOrderContent() {
                                 <div className="bg-white rounded-3xl p-6 border shadow-sm">
                                     <h3 className="text-sm font-bold mb-4">Order Summary</h3>
                                     <div className="space-y-4 mb-6">
-                                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                        {order.items.map((item: any) => (
+                                        {(order.items || []).map((item) => (
                                             <div key={item.productId} className="flex gap-3">
                                                 <div className="w-10 h-10 relative rounded-lg overflow-hidden shrink-0 bg-gray-50 border">
                                                     <Image src={item.product.image} alt={item.product.name} fill className="object-cover" />

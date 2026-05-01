@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
@@ -97,7 +97,7 @@ export async function GET(req: Request) {
     } catch (e: unknown) {
         const error = e as Error;
         console.error("Cart error:", error);
-        return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+        return NextResponse.json({ success: false, message: (error as Error).message }, { status: 500 });
     }
 }
 
@@ -139,8 +139,10 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json({ success: true, message: "Added to cart" });
-    } catch (e: any) {
-        return NextResponse.json({ success: false, message: e.message }, { status: 500 });
+    } catch (e: unknown) {
+        return NextResponse.json({ success: false, message: (e as Error).message }, { status: 500 });
     }
 }
+
+
 

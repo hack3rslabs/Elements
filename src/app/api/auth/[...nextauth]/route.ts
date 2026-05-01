@@ -1,15 +1,10 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
-
-// Only import PrismaAdapter if prisma is available
-let adapter: NextAuthOptions["adapter"] = undefined;
-if (prisma) {
-    const { PrismaAdapter } = require("@next-auth/prisma-adapter");
-    adapter = PrismaAdapter(prisma);
-}
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
 
 // Build providers list dynamically
+const adapter = PrismaAdapter(prisma as any);
 const providers: NextAuthOptions["providers"] = [
     CredentialsProvider({
         name: "Mobile OTP",

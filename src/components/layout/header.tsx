@@ -10,7 +10,7 @@ import { useState, useEffect, useRef } from "react";
 
 export function Header() {
     const { data: session, status } = useSession();
-    const { cart } = useStore();
+    const { cart, wishlist } = useStore();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -86,15 +86,12 @@ export function Header() {
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-200 font-semibold text-[10px] tracking-wide">
                             ⭐ 15+ Years of Trust
                         </span>
-                        <a href="tel:+919876543210" className="flex items-center gap-1 hover:text-blue-200 transition-colors">
+                        <a href="tel:+919995552252" className="flex items-center gap-1 hover:text-blue-200 transition-colors">
                             <Phone className="h-3 w-3" /> +91 9995552252
                         </a>
                         <a href="mailto:skceramics999@gmail.com" className="flex items-center gap-1 hover:text-blue-200 transition-colors">
                             <Mail className="h-3 w-3" /> skceramics999@gmail.com
                         </a>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <Link href="/login" className="hover:text-blue-200 transition-colors">Login</Link>
                     </div>
                 </div>
             </div>
@@ -191,27 +188,37 @@ export function Header() {
                         </div>
 
                         {/* Action Icons */}
-                        <Link href="/wishlist">
-                            <Button variant="ghost" size="icon" className="relative hover:bg-accent hover:text-[#1877F2]">
-                                <Heart className="h-5 w-5" />
-                            </Button>
+                        <Link 
+                            href="/wishlist"
+                            className="relative flex items-center justify-center h-10 w-10 rounded-md hover:bg-accent hover:text-[#1877F2] transition-colors"
+                        >
+                            <Heart className="h-5 w-5" />
+                            {wishlist.length > 0 && (
+                                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#1877F2] text-white text-xs flex items-center justify-center font-bold shadow-md animate-scale-in">
+                                    {wishlist.length}
+                                </span>
+                            )}
                         </Link>
-                        <Link href="/cart">
-                            <Button variant="ghost" size="icon" className="relative hover:bg-accent hover:text-[#1877F2]">
-                                <ShoppingCart className="h-5 w-5" />
-                                {cart.itemCount > 0 && (
-                                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#1877F2] text-white text-xs flex items-center justify-center font-bold shadow-md animate-scale-in">
-                                        {cart.itemCount}
-                                    </span>
-                                )}
-                            </Button>
+                        
+                        <Link 
+                            href="/cart"
+                            className="relative flex items-center justify-center h-10 w-10 rounded-md hover:bg-accent hover:text-[#1877F2] transition-colors"
+                        >
+                            <ShoppingCart className="h-5 w-5" />
+                            {cart.itemCount > 0 && (
+                                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#1877F2] text-white text-xs flex items-center justify-center font-bold shadow-md animate-scale-in">
+                                    {cart.itemCount}
+                                </span>
+                            )}
                         </Link>
                         {status === "authenticated" ? (
                             <div className="flex items-center gap-2">
-                                <Link href={session?.user?.role === "ADMIN" || session?.user?.role === "STAFF" ? "/admin" : "/profile"}>
-                                    <Button variant="ghost" size="icon" className="hover:bg-accent hover:text-[#1877F2]" title="Account">
-                                        <User className="h-5 w-5" />
-                                    </Button>
+                                <Link 
+                                    href={session?.user?.role === "ADMIN" || session?.user?.role === "STAFF" ? "/admin" : "/profile"}
+                                    title="Account"
+                                    className="flex items-center justify-center h-10 w-10 rounded-md hover:bg-accent hover:text-[#1877F2] transition-colors"
+                                >
+                                    <User className="h-5 w-5" />
                                 </Link>
                                 <Button 
                                     variant="ghost" 
@@ -223,10 +230,11 @@ export function Header() {
                                 </Button>
                             </div>
                         ) : (
-                            <Link href="/login">
-                                <Button variant="ghost" size="icon" className="hover:bg-accent hover:text-[#1877F2]">
-                                    <User className="h-5 w-5" />
-                                </Button>
+                            <Link 
+                                href="/login"
+                                className="flex items-center justify-center h-10 w-10 rounded-md hover:bg-accent hover:text-[#1877F2] transition-colors"
+                            >
+                                <User className="h-5 w-5" />
                             </Link>
                         )}
                     </div>
@@ -292,6 +300,15 @@ export function Header() {
                     <div className="h-5 w-5 mb-1"><Menu className="w-full h-full" /></div>
                     <span className="text-[10px] font-medium">Categories</span>
                 </button>
+                <Link href="/wishlist" className="flex flex-col items-center p-2 text-gray-500 hover:text-[#1877F2] min-w-[64px] relative">
+                    <div className="h-5 w-5 mb-1"><Heart className="w-full h-full" /></div>
+                    <span className="text-[10px] font-medium">Wishlist</span>
+                    {wishlist.length > 0 && (
+                        <span className="absolute top-1 right-3 h-4 w-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">
+                            {wishlist.length}
+                        </span>
+                    )}
+                </Link>
                 <Link href="/cart" className="flex flex-col items-center p-2 text-gray-500 hover:text-[#1877F2] min-w-[64px] relative">
                     <div className="h-5 w-5 mb-1"><ShoppingCart className="w-full h-full" /></div>
                     <span className="text-[10px] font-medium">Cart</span>

@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { AnalyticsTracker } from "@/components/analytics/analytics-tracker";
+
 import { LeadGenGate } from "@/components/analytics/lead-gen-gate";
 import { Suspense } from "react";
 
@@ -12,7 +12,7 @@ export function GlobalWidgets() {
     return (
         <>
             <Suspense fallback={null}>
-                <AnalyticsTracker />
+                {/* <AnalyticsTracker /> */}
             </Suspense>
             {!isAdminOrLogin && <LeadGenGate />}
         </>

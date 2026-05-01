@@ -155,7 +155,7 @@ function ProductCard({ product, onAddToCart, onToggleWishlist, isWishlisted }: {
           </div>
           {/* Contact shortcut on mobile */}
           <a
-            href={`https://wa.me/919876543210?text=${encodeURIComponent(`Hi! I need details about: ${product.name}`)}`}
+            href={`https://wa.me/919995552252?text=${encodeURIComponent(`Hi! I need details about: ${product.name}`)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-2 flex items-center justify-center gap-1.5 text-[10px] md:text-xs text-green-700 bg-green-50 rounded-full py-1.5 font-medium hover:bg-green-100 transition-colors"

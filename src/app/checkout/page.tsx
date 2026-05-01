@@ -8,11 +8,10 @@ import { useStore } from "@/lib/store";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Loader2 } from "lucide-react";
 import {
     Truck, ShieldCheck, CreditCard, Banknote,
-    ArrowLeft, CheckCircle2, MapPin, Building,
-    Users, AlertCircle, FileText, ChevronRight
+    ArrowLeft, MapPin, Building,
+    FileText, ChevronRight, CheckCircle2, Loader2
 } from "lucide-react";
 
 export default function CheckoutPage() {
@@ -46,11 +45,13 @@ export default function CheckoutPage() {
 
     useEffect(() => {
         if (session?.user) {
-            setForm(f => ({
-                ...f,
-                customerName: session.user?.name || f.customerName,
-                email: session.user?.email || f.email,
-            }));
+            void Promise.resolve().then(() => {
+                setForm(f => ({
+                    ...f,
+                    customerName: session.user?.name || f.customerName,
+                    email: session.user?.email || f.email,
+                }));
+            });
         }
     }, [session]);
 
@@ -77,7 +78,7 @@ export default function CheckoutPage() {
                         state: data.data.state
                     }));
                 }
-            } catch (e) {
+            } catch {
                 console.error("PIN Lookup failed");
             }
             setPinLoading(false);
@@ -109,7 +110,7 @@ export default function CheckoutPage() {
             } else {
                 alert(data.message || "Order failed");
             }
-        } catch (e) {
+        } catch {
             alert("Network error. Please try again.");
         }
         setLoading(false);

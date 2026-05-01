@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -49,8 +49,9 @@ export async function POST(request: NextRequest) {
         size: file.size
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] Upload Error:', error);
-    return NextResponse.json({ success: false, message: 'Upload failed', error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Upload failed', error: (error as Error).message }, { status: 500 });
   }
 }
+

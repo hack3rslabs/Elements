@@ -40,8 +40,9 @@ export async function GET(request: NextRequest) {
     }));
 
     return NextResponse.json({ success: true, data: formatted, roles: ROLES_CONFIG });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }
 }
 
@@ -65,8 +66,8 @@ export async function POST(request: NextRequest) {
         email,
         phone,
         password: hashedPassword,
-        role: roleUpper as any,
-        permissions: (ROLES_CONFIG as any)[role.toLowerCase()]?.permissions || [],
+        role: roleUpper as "ADMIN" | "STAFF" | "SUB_ADMIN" | "TELE_CALLER" | "PRODUCT_UPLOADER" | "VIEWER",
+        permissions: (ROLES_CONFIG as Record<string, { permissions: string[] }>)[role.toLowerCase()]?.permissions || [],
       }
     });
 
@@ -84,7 +85,8 @@ export async function POST(request: NextRequest) {
         permissions: user.permissions
       }
     });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  } catch (error) {
+    const err = error as Error;
+    return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }
 }

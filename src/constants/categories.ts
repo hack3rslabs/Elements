@@ -18,10 +18,10 @@ export const CATEGORIES: Category[] = [
         slug: "quartz-sinks", 
         image: "/images/products/quartz-main.png",
         subCategories: [
-          { name: "Quartz Single Bowl", slug: "quartz-single-bowl", image: "/images/products/quartz-single-bowl.jpg" },
+          { name: "Quartz Single Bowl", slug: "quartz-single-bowl", image: "/images/products/QSB.png" },
           { name: "Quartz Double Bowl", slug: "quartz-double-bowl", image: "/images/products/quartz-main.png" },
-          { name: "Quartz Single Bowl With Drainboard", slug: "quartz-single-drainboard", image: "/images/products/quartz-main.png" },
-          { name: "Quartz Double Bowl With Drainboard", slug: "quartz-double-drainboard", image: "/images/products/quartz-main.png" },
+          { name: "Quartz Single Bowl With Drainboard", slug: "quartz-single-drainboard", image: "/images/products/QSBD.png" },
+          { name: "Quartz Double Bowl With Drainboard", slug: "quartz-double-drainboard", image: "/images/products/QDBD.png" },
         ]
       },
       { 
@@ -30,12 +30,17 @@ export const CATEGORIES: Category[] = [
         image: "/images/products/handmade-main.png",
         subCategories: [
           { name: "Handmade Single Bowl", slug: "handmade-single-bowl", image: "/images/products/handmade-main.png" },
-          { name: "Handmade Double Bowl", slug: "handmade-double-bowl", image: "/images/products/handmade-main.png" },
-          { name: "Handmade Single Bowl With Drainboard", slug: "handmade-single-drainboard", image: "/images/products/handmade-main.png" },
-          { name: "Handmade Double Bowl With Drainboard", slug: "handmade-double-drainboard", image: "/images/products/handmade-main.png" },
+          { name: "Handmade Double Bowl", slug: "handmade-double-bowl", image: "/images/products/HDB.png" },
+          { name: "Handmade Single Bowl With Drainboard", slug: "handmade-single-drainboard", image: "/images/products/HSBD.png" },
         ]
       },
-      { name: "Smart Sinks", slug: "multi-functional-sinks", image: "/images/products/multifunctional.jpg" },
+      { name: "Smart Sinks", slug: "multi-functional-sinks", image: "/images/products/multifunctional.jpg",
+        subCategories: [
+          { name: "Nano Smart Sink", slug: "nano-smart", image: "/images/products/Nano.png" },
+          { name: "Piano Smart Sink", slug: "piano-smart", image: "/images/products/Piano.png" },
+          { name: "Opera Smart Sink", slug: "opera-smart", image: "/images/products/Opera.png" },
+        ]
+       },
     ]
   },
   { 
