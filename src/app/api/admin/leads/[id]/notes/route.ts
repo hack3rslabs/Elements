@@ -38,7 +38,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const updated = await prisma.cRMLead.update({
       where: { id },
-      data: { notes: updatedNotes as any }
+      data: { notes: updatedNotes as unknown as object[] }
     });
 
     return NextResponse.json({ success: true, data: updated });

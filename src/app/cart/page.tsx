@@ -12,8 +12,6 @@ import {
     Trash2,
     ShoppingBag,
     ArrowRight,
-    ShieldCheck,
-    Truck,
     Tag,
 } from "lucide-react";
 

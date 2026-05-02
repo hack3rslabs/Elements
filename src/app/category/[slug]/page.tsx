@@ -8,7 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
-import { Star, SlidersHorizontal, Grid3X3, LayoutList, Heart, Filter, X } from "lucide-react";
+import { Star, Grid3X3, LayoutList, Heart, Filter, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ScrollReveal } from "@/components/ui/scroll-reveal";
 import { FilterSidebar } from "@/components/products/FilterSidebar";

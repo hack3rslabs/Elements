@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 
 // Build providers list dynamically
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const adapter = PrismaAdapter(prisma as any);
 const providers: NextAuthOptions["providers"] = [
     CredentialsProvider({

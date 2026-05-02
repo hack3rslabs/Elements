@@ -6,12 +6,12 @@ import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
-    LayoutDashboard, Package, ImageIcon, Users, ListTodo, Megaphone,
+    LayoutDashboard, Package, Users, Megaphone,
     Search as SearchIcon, Settings, Menu, X, Plus, Edit, Trash2, Eye,
-    TrendingUp, ShoppingCart, Star, Phone, BarChart3, Globe, ArrowUpRight,
+    TrendingUp, ShoppingCart, Star, BarChart3, Globe, ArrowUpRight,
     Bell, LogOut, Upload, Save, CheckCircle2, AlertCircle,
-    Sparkles, Shield, Loader2, Link2, FileText, Truck, CreditCard,
-    ArrowDownRight, IndianRupee, SlidersHorizontal, GripVertical, ToggleLeft, ToggleRight
+    Sparkles, Shield, Loader2, Link2, CreditCard,
+    ArrowDownRight, IndianRupee, SlidersHorizontal, ToggleLeft, ToggleRight
 } from "lucide-react";
 import OrdersTab from "./components/OrdersTab";
 import IntegrationsTab from "./components/IntegrationsTab";
@@ -847,7 +847,7 @@ export default function AdminPage() {
                             {banners.length === 0 && !showBannerForm ? <div className="bg-white rounded-2xl border shadow-sm p-8 text-center text-gray-400"><Upload className="h-10 w-10 mx-auto mb-3 text-gray-300" /><p className="text-sm font-medium">No banners yet</p><p className="text-xs mt-1">Add your first banner to display on the storefront.</p></div> : (
                                 <div className="space-y-3">{banners.map(b => (
                                     <div key={b.id} className="bg-white rounded-2xl border shadow-sm p-4 flex items-center gap-4">
-                                        <div className="h-16 w-28 bg-gray-100 rounded-xl overflow-hidden shrink-0">{b.image && <img src={b.image} alt={b.title} className="w-full h-full object-cover" />}</div>
+                                        <div className="h-16 w-28 bg-gray-100 rounded-xl overflow-hidden shrink-0 relative">{b.image && <Image src={b.image} alt={b.title} fill className="object-cover" />}</div>
                                         <div className="flex-1 min-w-0"><p className="font-medium text-sm truncate">{b.title}</p><p className="text-[10px] text-gray-400">{b.position} • {b.link}</p></div>
                                         <button onClick={async () => { try { const res = await fetch(`${API}/api/admin/banners/${b.id}/toggle`, { method: 'PATCH', headers: HEADERS }); const d = await res.json(); if (d.success) setBanners(prev => prev.map(x => x.id === b.id ? d.data as Banner : x)); } catch { } }} className={`text-xs px-3 py-1 rounded-full font-medium ${b.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{b.active ? 'Active' : 'Inactive'}</button>
                                         <button onClick={async () => { try { await fetch(`${API}/api/admin/banners/${b.id}`, { method: 'DELETE', headers: HEADERS }); setBanners(prev => prev.filter(x => x.id !== b.id)); showToast('Banner deleted'); } catch { } }} className="h-8 w-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100"><Trash2 className="h-3.5 w-3.5" /></button>

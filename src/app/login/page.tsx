@@ -42,7 +42,7 @@ export default function LoginPage() {
             } else {
                 setError(data.message);
             }
-        } catch (e) {
+        } catch {
             setError("Failed to send OTP. Please try again.");
         }
         setLoading(false);

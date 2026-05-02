@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     // Ensure directory exists
     try {
       await mkdir(uploadDir, { recursive: true });
-    } catch (e) {}
+    } catch { /* directory may already exist */ }
 
     const originalName = file.name;
     const extension = originalName.split('.').pop();

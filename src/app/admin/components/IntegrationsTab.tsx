@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Globe, Link2, CheckCircle2, Settings, Save, Copy, ExternalLink, AlertCircle, Info } from "lucide-react";
+import { Link2, CheckCircle2, Settings, Save, Copy, ExternalLink, Info } from "lucide-react";
 
 const API = "";
 const HEADERS = { "Content-Type": "application/json", "x-api-key": "elements-admin-key-2026" };

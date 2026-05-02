@@ -1,10 +1,10 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import {
-    Users, Plus, Edit, Trash2, Phone, MessageCircle, Mail,
+    Plus, Edit, Trash2, Phone, MessageCircle, Mail,
     CheckCircle2, Search as SearchIcon, X, Save, Calendar,
-    UserCheck, FileText, Clock, ArrowRight, ChevronDown, ChevronUp,
-    Tag, IndianRupee, Send, Filter
+    UserCheck, FileText, ArrowRight, ChevronDown, ChevronUp,
+    Send, Filter
 } from "lucide-react";
 
 const API = "";
