@@ -44,8 +44,8 @@ export const CATEGORIES: Category[] = [
     ]
   },
   { 
-    name: "ARTIFICIAL GRASS & PVC PANNELS GREENLINES", 
-    image: "/images/products/ag.webp", 
+    name: "ARTIFICIAL GRASS & PVC PANNELS", 
+    image: "/images/products/ag.png", 
     slug: "artificial-grass", 
     desc: "Artificial Grass for Modern Living",
     subCategories: [
@@ -56,7 +56,7 @@ export const CATEGORIES: Category[] = [
   },
   { 
     name: "ALUMINIUM INSULATION FOILS  ", 
-    image: "/images/products/aluminium insulation.avif", 
+    image: "/images/products/aluminium-insulation.png", 
     slug: "aluminium-insulation", 
     desc: "Mitti magic terracotta panels",
     subCategories: [
@@ -75,7 +75,7 @@ export const CATEGORIES: Category[] = [
       { name: "FRP INLAY", slug: "frpinlay", image: "/images/products/mc.png" },
     ]
   },
-  { name: "TERRACOTA PRODUCTS", image: "/images/products/tp.webp", slug: "terracota-products", desc: "Designer printed & vitrified tiles",
+  { name: "TERRACOTA PRODUCTS", image: "/images/products/Tp.png", slug: "terracota-products", desc: "Designer printed & vitrified tiles",
   subCategories: [
     { name: "TERRACOTA CLAY JALI", slug: "jali", image: "/images/products/tp.webp" },
     { name: "TERRACOTA ROOF TILES", slug: "roof-tiles", image: "/images/products/tp.webp" },
@@ -83,20 +83,20 @@ export const CATEGORIES: Category[] = [
   ]
  },
 
-  { name: "MASON HOUSE", image: "/images/products/mason house.avif", slug: "tile-adhesive-epoxy", desc: "Designer printed & vitrified tiles", 
+  { name: "MASON HOUSE", image: "/images/products/mason-house.png", slug: "tile-adhesive-epoxy", desc: "Designer printed & vitrified tiles", 
   subCategories: [
     { name: "TILE ADHESIVE", slug: "tile-adhesive", image: "/images/products/tp.webp" },
     { name: "TILE EPOXY", slug: "tile-epoxy", image: "/images/products/tp.webp" },
     { name: "TILING TOOLS", slug: "tile-tools", image: "/images/products/tp.webp" },
   ]},
   
-  { name: "PVD PRODUCTS & SHINEX", image: "/images/products/pvd.webp", slug: "pvd-profiles-sheets", desc: "Designer printed & vitrified tiles", 
+  { name: "PVD PRODUCTS & SHINEX", image: "/images/products/pvd.jpg", slug: "pvd-profiles-sheets", desc: "Designer printed & vitrified tiles", 
     subCategories: [
       { name: "PVD FURNITURE", slug: "pvd-furniture", image: "/images/products/tp.webp" },
       { name: "PVD SHEETS", slug: "pvd-sheets", image: "/images/products/tp.webp" },
       { name: "PVD PROFILES", slug: "pvd-profile", image: "/images/products/tp.webp" },
     ]
   },
-  { name: "FLOOR PROTECTION", image: "/images/products/fp.webp", slug: "floor-protection", desc: "Designer printed & vitrified tiles" },
+  { name: "FLOOR PROTECTION", image: "/images/products/FP.png", slug: "floor-protection", desc: "Designer printed & vitrified tiles" },
 ];
 

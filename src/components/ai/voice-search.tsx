@@ -5,15 +5,64 @@ import { Mic, MicOff, Search, X, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
-// Web Speech API type declarations (not in default TS DOM lib)
-/* eslint-disable @typescript-eslint/no-explicit-any */
+// Web Speech API type declarations
+interface SpeechRecognitionErrorEvent extends Event {
+    error: string;
+    message?: string;
+}
+
+interface SpeechRecognitionEvent extends Event {
+    resultIndex: number;
+    results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionResultList {
+    readonly length: number;
+    [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+    readonly length: number;
+    [index: number]: SpeechRecognitionAlternative;
+    isFinal: boolean;
+}
+
+interface SpeechRecognitionAlternative {
+    transcript: string;
+    confidence: number;
+}
+
+interface SpeechRecognition extends EventTarget {
+    continuous: boolean;
+    interimResults: boolean;
+    lang: string;
+    maxAlternatives: number;
+    onaudiostart: ((this: SpeechRecognition, ev: Event) => void) | null;
+    onaudioend: ((this: SpeechRecognition, ev: Event) => void) | null;
+    onend: ((this: SpeechRecognition, ev: Event) => void) | null;
+    onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null;
+    onnomatch: ((this: SpeechRecognition, ev: Event) => void) | null;
+    onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null;
+    onsoundstart: ((this: SpeechRecognition, ev: Event) => void) | null;
+    onsoundend: ((this: SpeechRecognition, ev: Event) => void) | null;
+    onspeechstart: ((this: SpeechRecognition, ev: Event) => void) | null;
+    onspeechend: ((this: SpeechRecognition, ev: Event) => void) | null;
+    onstart: ((this: SpeechRecognition, ev: Event) => void) | null;
+    start(): void;
+    stop(): void;
+    abort(): void;
+}
+
+interface SpeechRecognitionStatic {
+    new (): SpeechRecognition;
+}
+
 declare global {
     interface Window {
-        SpeechRecognition: any;
-        webkitSpeechRecognition: any;
+        SpeechRecognition: SpeechRecognitionStatic;
+        webkitSpeechRecognition: SpeechRecognitionStatic;
     }
 }
-type SpeechRecognitionType = Window['SpeechRecognition'] | Window['webkitSpeechRecognition'];
 
 interface SearchResult {
     name: string;
@@ -31,7 +80,7 @@ export function VoiceSearchModal({ open, onClose }: { open: boolean; onClose: ()
     const [results, setResults] = useState<SearchResult[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const recognitionRef = useRef<SpeechRecognitionType | null>(null);
+    const recognitionRef = useRef<SpeechRecognition | null>(null);
 
     useEffect(() => {
         if (!open) {
@@ -56,7 +105,7 @@ export function VoiceSearchModal({ open, onClose }: { open: boolean; onClose: ()
         recognition.maxAlternatives = 1;
         recognition.continuous = false;
 
-        recognition.onresult = (event: { results: { [x: number]: any; length: number; } }) => {
+        recognition.onresult = (event: SpeechRecognitionEvent) => {
             const result = event.results[event.results.length - 1];
             setTranscript(result[0].transcript);
             if (result.isFinal) {

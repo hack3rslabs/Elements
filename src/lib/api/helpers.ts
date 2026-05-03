@@ -137,15 +137,42 @@ export function isNewArrival(createdAt: Date | string | null): boolean {
     return Date.now() - d.getTime() <= NEW_ARRIVAL_DAYS * 24 * 60 * 60 * 1000;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function toProductDTO(product: any) {
+interface BaseProduct {
+    id: string;
+    name: string;
+    sku: string;
+    slug: string;
+    shortDescription?: string | null;
+    description?: string | null;
+    price: unknown;
+    mrp: unknown;
+    stockStatus: string;
+    stock: unknown;
+    images: string[];
+    specifications?: unknown;
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+    metaKeywords?: string | null;
+    categoryId: string;
+    category?: {
+        name: string;
+        parent?: {
+            name: string;
+        } | null;
+    } | null;
+    reviews?: BaseReview[];
+    createdAt: Date | string;
+    updatedAt: Date | string;
+}
+
+export function toProductDTO(product: BaseProduct) {
     const images = Array.isArray(product.images) ? (product.images as string[]).filter(Boolean) : [];
     const image = images[0] || DEFAULT_PRODUCT_IMAGE;
     const categoryName = product.category?.name || '';
     const parentCategory = product.category?.parent?.name || product.category?.name || '';
     const { rating, reviewCount } = computeRatingStats(product.reviews || []);
     const specs = normalizeSpecifications(product.specifications);
-    const tags = parseTagsFromKeywords(product.metaKeywords);
+    const tags = parseTagsFromKeywords(product.metaKeywords || null);
     const derivedTags = tags.length > 0 ? tags : [specs.material, specs.finish, categoryName, parentCategory].filter(Boolean);
 
     return {
@@ -177,8 +204,17 @@ export function toProductDTO(product: any) {
     };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function toReviewDTO(review: any) {
+interface BaseReview {
+    id: string;
+    user?: {
+        name?: string | null;
+    } | null;
+    rating: unknown;
+    comment?: string | null;
+    createdAt: Date | string;
+}
+
+export function toReviewDTO(review: BaseReview) {
     return {
         id: review.id,
         userName: review.user?.name || 'Anonymous',
@@ -189,8 +225,7 @@ export function toReviewDTO(review: any) {
     };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function computeFacets(products: any[]) {
+export function computeFacets(products: BaseProduct[]) {
     const materials = new Set<string>();
     const finishes = new Set<string>();
     let min = Number.POSITIVE_INFINITY;
@@ -200,17 +235,23 @@ export function computeFacets(products: any[]) {
     let newArrivals = 0;
 
     for (const p of products) {
-        const material = p.specifications?.material;
-        const finish = p.specifications?.finish;
+        const specs = normalizeSpecifications(p.specifications);
+        const material = specs.material;
+        const finish = specs.finish;
         if (material) materials.add(material);
         if (finish) finishes.add(finish);
-        if (Number.isFinite(p.price)) {
-            min = Math.min(min, p.price);
-            max = Math.max(max, p.price);
+        
+        const price = safeNumber(p.price);
+        if (Number.isFinite(price)) {
+            min = Math.min(min, price);
+            max = Math.max(max, price);
         }
         if (p.stockStatus === 'IN_STOCK') inStock += 1;
-        if (p.isBestSeller) bestSellers += 1;
-        if (p.isNewArrival) newArrivals += 1;
+        
+        // Use logic from toProductDTO or similar for derived fields
+        const { reviewCount } = computeRatingStats(p.reviews || []);
+        if (reviewCount >= 2) bestSellers += 1;
+        if (isNewArrival(p.createdAt)) newArrivals += 1;
     }
 
     return {
