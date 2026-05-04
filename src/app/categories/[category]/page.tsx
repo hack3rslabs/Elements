@@ -5,7 +5,8 @@ import { Footer } from "@/components/layout/footer";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { CategoryCard } from "@/components/ui/category-card";
 import { findCategoryBySlug, isLeafCategory } from "@/lib/category-helpers";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { ScrollReveal } from "@/components/ui/scroll-reveal";
 import Link from "next/link";
@@ -17,8 +18,15 @@ const slideIn = {
 
 export default function CategoryPage() {
   const params = useParams();
+  const router = useRouter();
   const categorySlug = params.category as string;
   const category = findCategoryBySlug(categorySlug);
+
+  useEffect(() => {
+    if (category && isLeafCategory(category)) {
+      router.replace(`/category/${category.slug}`);
+    }
+  }, [category, router]);
 
   if (!category) {
     return (

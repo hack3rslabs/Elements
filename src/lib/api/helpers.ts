@@ -137,7 +137,7 @@ export function isNewArrival(createdAt: Date | string | null): boolean {
     return Date.now() - d.getTime() <= NEW_ARRIVAL_DAYS * 24 * 60 * 60 * 1000;
 }
 
-interface BaseProduct {
+export interface BaseProduct {
     id: string;
     name: string;
     sku: string;
@@ -204,7 +204,7 @@ export function toProductDTO(product: BaseProduct) {
     };
 }
 
-interface BaseReview {
+export interface BaseReview {
     id: string;
     user?: {
         name?: string | null;

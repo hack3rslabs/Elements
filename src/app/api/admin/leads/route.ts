@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+interface LeadNote {
+  id: string;
+  text: string;
+  type: string;
+  createdBy: string;
+  createdAt: string;
+}
+
 // Security check helper
 const isAdmin = (request: NextRequest) => {
   const apiKey = request.headers.get('x-admin-key') || request.headers.get('x-api-key');
@@ -35,16 +43,20 @@ export async function GET(request: NextRequest) {
     });
 
     // Match the frontend's expected "Lead" interface
-    const formatted = leads.map(l => ({
-      ...l,
-      timestamp: l.createdAt.toISOString(),
-      updatedAt: l.updatedAt.toISOString(),
-      status: l.status.toLowerCase(),
-      source: l.source?.toLowerCase() || 'manual',
-      notes: l.notes || [],
-      followUps: l.followUps || [],
-      value: Number((l as { value?: unknown }).value || 0), // Fallback if field not in schema yet
-    }));
+    const formatted = leads.map(l => {
+      const notes = (l.notes as unknown as LeadNote[]) || [];
+      return {
+        ...l,
+        timestamp: l.createdAt.toISOString(),
+        updatedAt: l.updatedAt.toISOString(),
+        status: l.status.toLowerCase(),
+        source: l.source?.toLowerCase() || 'manual',
+        message: notes.length > 0 ? notes[0].text : '',
+        notes: notes,
+        followUps: (l.followUps as unknown as unknown[]) || [],
+        value: Number(l.value || 0),
+      };
+    });
 
     return NextResponse.json({ success: true, data: formatted });
   } catch (error) {

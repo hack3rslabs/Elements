@@ -1,22 +1,24 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Phone, Mail, Facebook, Instagram, Twitter, Youtube, Award } from "lucide-react";
+import { CATEGORIES } from "@/constants/categories";
+import { isLeafCategory } from "@/lib/category-helpers";
 
 export function Footer() {
     return (
         <footer className="bg-[#0a0a0a] text-gray-300">
             {/* Main Footer */}
             <div className="container py-16">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                     {/* Brand */}
                     <div className="space-y-4">
                         <Link href="/" className="inline-block">
                             <Image
                                 src="/images/brand/elements-logo.png"
                                 alt="Elements - World Class Elements"
-                                width={160}
-                                height={48}
-                                className="h-12 w-auto object-contain "
+                                width={184}
+                                height={55}
+                                className="h-[55px] w-auto object-contain "
                             />
                         </Link>
                         <p className="text-sm text-gray-400 leading-relaxed">
@@ -65,28 +67,25 @@ export function Footer() {
                         </ul>
                     </div>
 
-                    {/* Categories
+                    {/* Categories */}
                     <div>
                         <h4 className="font-semibold text-white mb-4 text-sm uppercase tracking-wider">Categories</h4>
                         <ul className="space-y-2.5">
-                            {[
-                                { name: "Kitchen Sinks", href: "/category/kitchen" },
-                                { name: "Artificial Grass", href: "/category/artificial-grass" },
-                                { name: "Aluminium Insulation", href: "/category/aluminium-insulation" },
-                                { name: "Manhole Covers", href: "/category/manhole-covers" },
-                                { name: "Terracota Products", href: "/category/terracota-products" },
-                                { name: "Tile Adhesive & Epoxy", href: "/category/tile-adhesive-epoxy" },
-                                { name: "PVD Profiles & Sheets", href: "/category/pvd-profiles-sheets" },
-                                { name: "Floor Protection", href: "/category/floor-protection" },
-                            ].map((link) => (
-                                <li key={link.name}>
-                                    <Link href={link.href} className="text-sm text-gray-400 hover:text-[#1877F2] transition-colors">
-                                        {link.name}
-                                    </Link>
-                                </li>
-                            ))}
+                            {CATEGORIES.slice(0, 8).map((category) => {
+                                const href = isLeafCategory(category)
+                                    ? `/category/${category.slug}`
+                                    : `/categories/${category.slug}`;
+                                
+                                return (
+                                    <li key={category.slug}>
+                                        <Link href={href} className="text-sm text-gray-400 hover:text-[#1877F2] transition-colors capitalize">
+                                            {category.name.toLowerCase()}
+                                        </Link>
+                                    </li>
+                                );
+                            })}
                         </ul>
-                    // </div> */}
+                    </div>
 
                     {/* Branches */}
                     <div>
@@ -95,7 +94,6 @@ export function Footer() {
                             {[
                                 { city: "Visakhapatnam", addr: "Near krishna college , Maddilapalem", href: "https://www.google.com/maps/place/Sree+Kameswari+Ceramics/@17.7417647,83.3245967,17z/data=!3m1!4b1!4m6!3m5!1s0x3a39432f1a682a31:0x23f216d34951248a!8m2!3d17.7417647!4d83.3245967!16s%2Fg%2F11fwhctm7z" },
                                 { city: "Bangalore", addr: "Industrial Suburb, Yeswanthapur", href: "https://www.google.com/maps/search/Hindustan+Elements+Yeswanthapur" },
-        
                             ].map((branch) => (
                                 <li key={branch.city}>
                                     <a href={branch.href} target="_blank" rel="noopener noreferrer" className="block group">

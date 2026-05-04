@@ -76,7 +76,7 @@ export default function CartPage() {
                                             <Image
                                                 src={
                                                     item.product.images?.[0] ||
-                                                    "/images/products/kitchen-sink-1.webp"
+                                                    "/images/products/kicjen sunk 1.webp"
                                                 }
                                                 alt={item.product.name}
                                                 fill
@@ -199,9 +199,7 @@ export default function CartPage() {
                                             <span className="text-muted-foreground">
                                                 Delivery
                                             </span>
-                                            <span className="text-green-600 font-medium">
-                                                {cart.subtotal >= 5000 ? "FREE" : "₹99"}
-                                            </span>
+                                           
                                         </div>
 
                                         <div className="border-t pt-3 flex justify-between font-bold">

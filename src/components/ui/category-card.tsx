@@ -23,7 +23,7 @@ export function CategoryCard({ name, image, href, index = 0, productCount }: Cat
       >
         <div className="aspect-[4/3] relative overflow-hidden bg-gray-50">
           <Image
-            src={image}
+            src={image || "/images/products/kicjen sunk 1.webp"}
             alt={name}
             fill
             className="object-cover transition-transform duration-700 group-hover:scale-110"

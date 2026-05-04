@@ -11,7 +11,7 @@ export const CATEGORIES: Category[] = [
     name: "KITCHEN SINKS", 
     image: "/images/products/main-kitchen.png", 
     slug: "kitchen", 
-    desc: "Premium Quartz Sinks",
+    desc: "Premium Sinks",
     subCategories: [
       { 
         name: "Quartz Sinks", 
@@ -47,7 +47,7 @@ export const CATEGORIES: Category[] = [
     name: "ARTIFICIAL GRASS & PVC PANNELS", 
     image: "/images/products/ag.png", 
     slug: "artificial-grass", 
-    desc: "Artificial Grass for Modern Living",
+    desc: "Artificial Grass & Panels for Modern Living",
     subCategories: [
       { name:"Charcol Panels", slug: "charcol-panels", image: "/images/products/ag.webp" },
       { name: "Soft Panels", slug: "soft-panels", image: "/images/products/ag.webp" },
@@ -56,26 +56,26 @@ export const CATEGORIES: Category[] = [
   },
   { 
     name: "ALUMINIUM INSULATION FOILS  ", 
-    image: "/images/products/aluminium-insulation.png", 
+    image: "/images/products/aluminium-insulation.jpg", 
     slug: "aluminium-insulation", 
-    desc: "Mitti magic terracotta panels",
+    desc: "Aluminium Insulation Foils & Covers",
     subCategories: [
-      { name: "ALUMINIUM BUBBLE INSULATION", slug: "foils", image: "/images/products/aluminium insulation.avif" },
-      { name: " ALUMINIUM TANK COVERS", slug: "covers", image: "/images/products/aluminium insulation.avif" },
+      { name: "ALUMINIUM BUBBLE INSULATION", slug: "foils", image: "/images/products/ABI.jpg" },
+      { name: "ALUMINIUM TANK COVERS", slug: "covers", image: "/images/products/aluminium insulation.avif" },
     ]
   },
   { 
     name: " FRP MANHOLE COVERS", 
     image: "/images/products/mc.png", 
     slug: "manhole-covers", 
-    desc: "Durable and aesthetic covers",
+    desc: "  FRP Manhole Covers",
     subCategories: [
       { name: "  FRP MANHOLE COVERS", slug: "FRP", image: "/images/products/mc.png" },
       { name: "SS INLAY", slug: "ssinlay", image: "/images/products/mc.png" },
       { name: "FRP INLAY", slug: "frpinlay", image: "/images/products/mc.png" },
     ]
   },
-  { name: "TERRACOTA PRODUCTS", image: "/images/products/Tp.png", slug: "terracota-products", desc: "Designer printed & vitrified tiles",
+  { name: "TERRACOTA PRODUCTS", image: "/images/products/Tp.png", slug: "terracota-products", desc: "Terracota products",
   subCategories: [
     { name: "TERRACOTA CLAY JALI", slug: "jali", image: "/images/products/tp.webp" },
     { name: "TERRACOTA ROOF TILES", slug: "roof-tiles", image: "/images/products/tp.webp" },

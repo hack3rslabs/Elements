@@ -115,9 +115,9 @@ export function Header() {
                         <Image
                             src="/images/brand/elements-logo.png"
                             alt="Elements - World Class Elements"
-                            width={160}
-                            height={48}
-                            className="h-11 w-auto object-contain"
+                            width={184}
+                            height={55}
+                            className="h-[51px] w-auto object-contain"
                             priority
                         />
                     </Link>
@@ -175,7 +175,7 @@ export function Header() {
                                             onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
                                         >
                                             <div className="h-10 w-10 bg-muted rounded-lg overflow-hidden shrink-0 relative">
-                                                <Image src={p.image} alt={p.name} fill className="object-cover" />
+                                                <Image src={p.image || '/images/products/kicjen sunk 1.webp'} alt={p.name} fill className="object-cover" />
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium truncate">{p.name}</p>
