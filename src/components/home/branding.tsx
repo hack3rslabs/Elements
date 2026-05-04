@@ -77,7 +77,7 @@ export function Branding() {
                         transition={{ duration: 0.8 }}
                         className="flex-1 relative flex justify-end items-end"
                     >
-                        <div className="relative z-10 w-full max-w-[420px] group">
+                        <div className="relative z-10 w-full max-w-[420px] group hidden md:block">
                             <Image
                                 src="/images/products/suman.png"
                                 alt="Hindustan Elements Showcase"
