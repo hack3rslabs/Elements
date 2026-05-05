@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { Branding } from "@/components/home/branding";
 import { CategorySection } from "@/components/home/category-section";
 import { RemainingContent } from "@/components/home/remaining-content";
+import { ProductShowcase } from "@/components/home/product-showcase";
 
 interface Product {
   id: string;
@@ -55,8 +56,8 @@ export default function Home() {
         {/* 3. Shop by Category */}
         <CategorySection products={allProducts} />
 
-        {/* 2. Products
-        <ProductShowcase products={allProducts} />    */}
+        {/* 2. Products */}
+        <ProductShowcase products={allProducts} />   
 
         {/* 4. Remaining Content */}
         <RemainingContent />

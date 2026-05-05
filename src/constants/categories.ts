@@ -75,19 +75,36 @@ export const CATEGORIES: Category[] = [
       { name: "FRP INLAY", slug: "frpinlay", image: "/images/products/mc.png" },
     ]
   },
+
   { name: "TERRACOTA PRODUCTS", image: "/images/products/Tp.png", slug: "terracota-products", desc: "Terracota products",
   subCategories: [
-    { name: "TERRACOTA CLAY JALI", slug: "jali", image: "/images/products/tp.webp" },
-    { name: "TERRACOTA ROOF TILES", slug: "roof-tiles", image: "/images/products/tp.webp" },
-     { name: "TERRACOTA CLADING BRICKS", slug: "cladding", image: "/images/products/tp.webp" },
+    { name: "TERRACOTA CLAY JALI", slug: "jali", image: "/images/products/terracotta clay jali.png" },
+    { 
+      name: "ROOF TILES", 
+      slug: "roof-tiles", 
+      image: "/images/products/roof-tiles.png",
+      subCategories: [
+        { name: "CLAY ROOF TILES", slug: "clay-roof-tiles", image: "/images/products/clay-floor.png" },
+        { name: "CERAMIC ROOF TILES", slug: "ceramic-roof-tiles", image: "/images/products/ceramic-floor.png" },
+      ]
+    },
+     { name: "TERRACOTA CLADING BRICKS", slug: "cladding-bricks", image: "/images/products/cladding-bricks.png" },
+      { name: "DECORATIVE TILES", slug: "decorative-tiles", image: "/images/products/tp.webp" },
+
+     { name: " BRICKS", slug: "bricks", image: "/images/products/bricks.png", 
+      subCategories: [
+        { name: "SOLID BRICKS", slug: "solid-bricks", image: "/images/products/solid.png" },
+        { name: "HOLLOW BRICKS", slug: "hollow-bricks", image: "/images/products/hollow.png" },
+      ]
+     },
   ]
  },
 
   { name: "MASON HOUSE", image: "/images/products/mason-house.png", slug: "tile-adhesive-epoxy", desc: "Designer printed & vitrified tiles", 
   subCategories: [
     { name: "TILE ADHESIVE", slug: "tile-adhesive", image: "/images/products/tp.webp" },
-    { name: "TILE EPOXY", slug: "tile-epoxy", image: "/images/products/tp.webp" },
-    { name: "TILING TOOLS", slug: "tile-tools", image: "/images/products/tp.webp" },
+    { name: "TILE EPOXY", slug: "tile-epoxy", image: "/images/products/Epoxy.png" },
+    { name: "TILING TOOLS", slug: "tile-tools", image: "/images/products/TILE LEVELING TOOLS.png" },
   ]},
   
   { name: "PVD PRODUCTS & SHINEX", image: "/images/products/pvd.jpg", slug: "pvd-profiles-sheets", desc: "Designer printed & vitrified tiles", 

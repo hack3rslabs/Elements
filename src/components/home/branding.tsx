@@ -24,7 +24,7 @@ export function Branding() {
                         >
                             
                             <h1 className="text-[2.17rem] md:text-[3.105rem] font-serif text-white leading-tight py-5">
-                                HINDUSTAN ELEMENTS
+                                HINDUSTHAN ELEMENTS
                             </h1>
                             <p className="text-gray-400 text-[1.035rem] md:text-[1.1385rem] max-w-xl mx-auto lg:mx-0 mt-[0.5175rem] leading-relaxed">
                                 Elevating infrastructure with premium building materials and state-of-the-art engineering solutions.
