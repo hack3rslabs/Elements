@@ -8,18 +8,19 @@ export async function POST(request: NextRequest) {
     const { phone, otp } = await request.json();
     if (!phone || !otp) return NextResponse.json({ success: false, message: 'Phone and OTP are required' }, { status: 400 });
 
-    const isTestOtp = (otp === '123456' && process.env.NODE_ENV === 'development') || (phone.includes('9502015977') && otp === '123456');
+    const adminPhone = process.env.ADMIN_PHONE_NUMBER || '9502015977';
+    const isTestOtp = (otp === '123456' && process.env.NODE_ENV === 'development') || (phone.includes(adminPhone) && otp === '123456');
     
     if (!isTestOtp) {
       const record = await prisma.verificationOTP.findUnique({
-        where: { phone }
+        where: { identifier: phone }
       });
 
       if (!record || record.otp !== otp || record.expiresAt < new Date()) {
         return NextResponse.json({ success: false, message: 'Invalid or expired OTP' }, { status: 401 });
       }
 
-      await prisma.verificationOTP.delete({ where: { phone } });
+      await prisma.verificationOTP.delete({ where: { identifier: phone } });
     }
 
     // Find or create user by phone number
@@ -31,14 +32,14 @@ export async function POST(request: NextRequest) {
       // Create new user if not found
       user = await prisma.user.create({
         data: {
-          name: phone.includes('9502015977') ? 'Admin Test' : 'User ' + phone.slice(-4),
+          name: phone.includes(adminPhone) ? 'Admin Test' : 'User ' + phone.slice(-4),
           email: `${phone}@elements.com`, // Consistent placeholder email
           phone: phone,
-          role: phone.includes('9502015977') ? 'ADMIN' : 'USER'
+          role: phone.includes(adminPhone) ? 'ADMIN' : 'USER'
         }
       });
       console.log(`[AUTH] Created new user for phone: ${phone}`);
-    } else if (phone.includes('9502015977') && user.role !== 'ADMIN') {
+    } else if (phone.includes(adminPhone) && user.role !== 'ADMIN') {
       user = await prisma.user.update({
         where: { id: user.id },
         data: { role: 'ADMIN' }

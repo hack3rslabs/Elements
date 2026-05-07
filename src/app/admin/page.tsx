@@ -470,35 +470,8 @@ export default function AdminPage() {
                                     <div className="h-10 w-10 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform"><Users className="h-5 w-5" /></div>
                                 </button>
                             </div>
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                                {/* Category Distribution */}
-                                <div className="bg-white rounded-2xl border shadow-sm p-5">
-                                    <h3 className="font-semibold mb-3 text-sm">Products by Category</h3>
-                                    {ds?.categoryDistribution ? (
-                                        <div className="space-y-2">
-                                            {Object.entries(ds.categoryDistribution).map(([cat, count]) => (
-                                                <div key={cat} className="flex items-center justify-between text-xs"><span className="text-gray-600 truncate">{cat}</span><span className="font-bold">{count}</span></div>
-                                            ))}
-                                        </div>
-                                    ) : <p className="text-xs text-gray-400">Loading...</p>}
-                                </div>
-
-                                {/* Orders by Status */}
-                                <div className="bg-white rounded-2xl border shadow-sm p-5">
-                                    <h3 className="font-semibold mb-3 text-sm">Orders by Status</h3>
-                                    {ds?.ordersByStatus && Object.keys(ds.ordersByStatus).length > 0 ? (
-                                        <div className="space-y-2">
-                                            {Object.entries(ds.ordersByStatus).map(([s, c]) => (
-                                                <div key={s} className="flex items-center justify-between text-xs"><span className="text-gray-600 capitalize">{s.toLowerCase()}</span><span className="font-bold">{c}</span></div>
-                                            ))}
-                                        </div>
-                                    ) : <p className="text-xs text-gray-400">No orders yet.</p>}
-                                    <button onClick={() => setActiveTab('orders')} className="text-xs text-[#1877F2] font-medium hover:underline mt-3 block">View Orders →</button>
-                                </div>
-                            </div>
                         </div>
                     )}
-
                     {/* PRODUCTS */}
                     {activeTab === "products" && (
                         <div className="space-y-4">
@@ -950,4 +923,3 @@ export default function AdminPage() {
         </div>
     );
 }
-

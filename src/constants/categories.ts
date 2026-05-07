@@ -50,8 +50,8 @@ export const CATEGORIES: Category[] = [
     desc: "Artificial Grass & Panels for Modern Living",
     subCategories: [
       { name:"Charcol Panels", slug: "charcol-panels", image: "/images/products/ag.webp" },
-      { name: "Soft Panels", slug: "soft-panels", image: "/images/products/ag.webp" },
-      { name: "Green Grass", slug: "green-grass", image: "/images/products/ag.webp" },
+      { name: "Soffit Panels", slug: "soft-panels", image: "/images/products/sofit.png" },
+      { name: "Green Grass", slug: "green-grass", image: "/images/products/green-grass.png" },
     ]
   },
   { 
@@ -61,7 +61,7 @@ export const CATEGORIES: Category[] = [
     desc: "Aluminium Insulation Foils & Covers",
     subCategories: [
       { name: "ALUMINIUM BUBBLE INSULATION", slug: "foils", image: "/images/products/ABI.jpg" },
-      { name: "ALUMINIUM TANK COVERS", slug: "covers", image: "/images/products/aluminium insulation.avif" },
+      { name: "ALUMINIUM TANK COVERS", slug: "covers", image: "/images/products/tankcover.png" },
     ]
   },
   { 
@@ -70,9 +70,9 @@ export const CATEGORIES: Category[] = [
     slug: "manhole-covers", 
     desc: "  FRP Manhole Covers",
     subCategories: [
-      { name: "  FRP MANHOLE COVERS", slug: "FRP", image: "/images/products/mc.png" },
-      { name: "SS INLAY", slug: "ssinlay", image: "/images/products/mc.png" },
-      { name: "FRP INLAY", slug: "frpinlay", image: "/images/products/mc.png" },
+      { name: "  FRP MANHOLE COVERS", slug: "FRP", image: "/images/products/frp.png" },
+      { name: "SS RECESSED ", slug: "ssinlay", image: "/images/products/ss-inlay.png" },
+      { name: "FRP RECESSED", slug: "frpinlay", image: "/images/products/frp-inlay.png" },
     ]
   },
 
@@ -89,7 +89,7 @@ export const CATEGORIES: Category[] = [
       ]
     },
      { name: "TERRACOTA CLADING BRICKS", slug: "cladding-bricks", image: "/images/products/cladding-bricks.png" },
-      { name: "DECORATIVE TILES", slug: "decorative-tiles", image: "/images/products/tp.webp" },
+      { name: "DECORATIVE TILES", slug: "decorative-tiles", image: "/images/products/decorative.png" },
 
      { name: " BRICKS", slug: "bricks", image: "/images/products/bricks.png", 
       subCategories: [
@@ -109,9 +109,9 @@ export const CATEGORIES: Category[] = [
   
   { name: "PVD PRODUCTS & SHINEX", image: "/images/products/pvd.jpg", slug: "pvd-profiles-sheets", desc: "Designer printed & vitrified tiles", 
     subCategories: [
-      { name: "PVD FURNITURE", slug: "pvd-furniture", image: "/images/products/tp.webp" },
-      { name: "PVD SHEETS", slug: "pvd-sheets", image: "/images/products/tp.webp" },
-      { name: "PVD PROFILES", slug: "pvd-profile", image: "/images/products/tp.webp" },
+      { name: "PVD FURNITURE", slug: "pvd-furniture", image: "/images/products/pvd-furniture.png" },
+      { name: "PVD SHEETS", slug: "pvd-sheets", image: "/images/products/pvd-sheets.png" },
+      { name: "PVD PROFILES", slug: "pvd-profile", image: "/images/products/pvd-profiles.png" },
     ]
   },
   { name: "FLOOR PROTECTION", image: "/images/products/FP.png", slug: "floor-protection", desc: "Designer printed & vitrified tiles" },

@@ -34,7 +34,7 @@ export function ProductShowcase({ products }: { products: Product[] }) {
   const { addToCart, toggleWishlist, isInWishlist } = useStore();
 
   return (
-    <section className="py-0 md:py-0 bg-gray">
+    <section className="py-4 md:py-4 bg-gray">
       <div className="container">
         <motion.div
           initial="hidden"

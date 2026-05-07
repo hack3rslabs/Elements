@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Download, TrendingUp, Users, IndianRupee, ArrowUpRight, Calendar, CreditCard, Banknote, ShoppingCart, ChevronLeft, ChevronRight, Package, Zap, Target, BarChart3 } from "lucide-react";
+import { Download, Users, IndianRupee, ArrowUpRight, Calendar, CreditCard, Banknote, ShoppingCart, ChevronLeft, ChevronRight, Package, Zap, Target, BarChart3 } from "lucide-react";
 
 const API = "";
 const HDRS = { "Content-Type": "application/json", "x-api-key": "elements-admin-key-2026" };
@@ -207,7 +207,7 @@ export default function ReportsTab() {
             </div>
 
             {/* Top Products & Category */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white rounded-2xl border shadow-sm p-5">
                     <h3 className="font-semibold mb-3 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-amber-500" /> Top Selling Products</h3>
                     {stats?.topProducts && stats.topProducts.length > 0 ? (
@@ -219,9 +219,9 @@ export default function ReportsTab() {
                             </div>
                         ))}</div>
                     ) : <p className="text-xs text-gray-400">Sales data will appear after orders are placed.</p>}
-                </div>
+                </div> */}
 
-                <div className="bg-white rounded-2xl border shadow-sm p-5">
+                {/* <div className="bg-white rounded-2xl border shadow-sm p-5">
                     <h3 className="font-semibold mb-3 flex items-center gap-2"><Package className="h-4 w-4 text-green-500" /> Inventory by Category</h3>
                     {stats?.categoryDistribution && Object.keys(stats.categoryDistribution).length > 0 ? (
                         <div className="space-y-2">{Object.entries(stats.categoryDistribution).map(([cat, count]) => (
@@ -230,8 +230,8 @@ export default function ReportsTab() {
                             </div>
                         ))}</div>
                     ) : <p className="text-xs text-gray-400">Loading...</p>}
-                </div>
-            </div>
+                </div> */}
+
 
             {/* Export Reports */}
             <div className="bg-white rounded-2xl border shadow-sm p-5">
