@@ -12,6 +12,7 @@ const providers: NextAuthOptions["providers"] = [
     CredentialsProvider({
         name: "Credentials",
         credentials: {
+            name: { label: "Name", type: "text" },
             phone: { label: "Phone", type: "text" },
             password: { label: "Password", type: "password" },
             email: { label: "Email", type: "text" },
@@ -21,66 +22,85 @@ const providers: NextAuthOptions["providers"] = [
         async authorize(credentials) {
             if (!prisma) return null;
 
-            // 1. Handle Regular User (Phone + Password)
+            // 1. Handle Regular User (Email + Phone + Password)
             if (credentials?.type === "user") {
-                const { phone: rawPhone, password } = credentials;
-                if (!rawPhone || !password) return null;
+                const { email: rawEmail, phone: rawPhone, password, name: rawName } = credentials;
+                if (!password || (!rawEmail && !rawPhone)) return null;
 
-                const phone = rawPhone.replace(/\D/g, '').slice(-10); // Get last 10 digits only
-                const formattedPhone = `+91${phone}`;
+                const email = rawEmail ? rawEmail.trim().toLowerCase() : null;
+                const phone = rawPhone ? rawPhone.replace(/\D/g, '').slice(-10) : null;
+                const customerName = rawName?.trim() || null;
+                const formattedPhone = phone ? `+91${phone}` : null;
 
-                console.log(`[AUTH] User Login: ${formattedPhone}`);
+                console.log(`[AUTH] User Login Attempt: ${email || formattedPhone}`);
 
                 try {
+                    // Try to find user by email or phone
                     let user = await prisma.user.findFirst({
                         where: {
                             OR: [
-                                { phone: formattedPhone },
-                                { phone: phone },
-                                { email: `${phone}@elements.com` }
+                                ...(email ? [{ email }] : []),
+                                ...(formattedPhone ? [{ phone: formattedPhone }] : [])
                             ]
                         }
                     });
 
                     if (!user) {
-                        console.log(`[AUTH] Creating new user: ${formattedPhone}`);
+                        // AUTO-REGISTRATION
+                        if (!email || !formattedPhone) {
+                            console.log(`[AUTH] Auto-registration failed: Missing email or phone`);
+                            return null;
+                        }
+
+                        console.log(`[AUTH] Auto-registering new user: ${email} / ${formattedPhone}`);
                         const hashedPassword = await bcrypt.hash(password, 10);
                         user = await prisma.user.create({
                             data: {
+                                email,
                                 phone: formattedPhone,
                                 password: hashedPassword,
-                                name: `User ${phone.slice(-4)}`,
-                                email: `${phone}@elements.com`,
+                                name: customerName || email?.split('@')[0] || 'User',
                                 role: 'USER'
                             }
                         });
                     } else {
-                        console.log(`[AUTH] Existing user found: ${user.phone || user.email}`);
-                        
-                        // Security: Force USER role for all phone-based logins
-                        if (user.role !== 'USER') {
-                            console.log(`[AUTH] Downgrading ${user.phone} from ${user.role} to USER`);
-                            user = await prisma.user.update({
-                                where: { id: user.id },
-                                data: { role: 'USER' }
-                            });
-                        }
+                        console.log(`[AUTH] Existing user found: ${user.email}`);
 
-                        // Handle password-less users (migrating)
+                        // Verify password
                         if (!user.password) {
-                            console.log(`[AUTH] Setting password for existing user`);
+                            // Migrate passwordless user
+                            console.log(`[AUTH] Migrating passwordless user: ${user.email}`);
                             const hashedPassword = await bcrypt.hash(password, 10);
                             user = await prisma.user.update({
                                 where: { id: user.id },
-                                data: { password: hashedPassword, phone: formattedPhone }
+                                data: { 
+                                    password: hashedPassword,
+                                    // Update phone if provided and currently null
+                                    ...(formattedPhone && !user.phone ? { phone: formattedPhone } : {})
+                                }
                             });
                         } else {
-                            // Verify password
                             const isMatch = await bcrypt.compare(password, user.password);
                             if (!isMatch) {
-                                console.log(`[AUTH] Password mismatch`);
+                                console.log(`[AUTH] Password mismatch for: ${user.email}`);
                                 return null;
                             }
+                        }
+
+                        // Update name if user provided one and current name is missing/placeholder
+                        if (customerName && (!user.name || user.name === user.email?.split('@')[0])) {
+                            user = await prisma.user.update({
+                                where: { id: user.id },
+                                data: { name: customerName }
+                            });
+                        }
+
+                        // Ensure role is USER for this path
+                        if (user.role !== 'USER' && user.role !== 'ADMIN' && user.role !== 'STAFF') {
+                            await prisma.user.update({
+                                where: { id: user.id },
+                                data: { role: 'USER' }
+                            });
                         }
                     }
 
@@ -158,7 +178,7 @@ export const authOptions: NextAuthOptions = {
                 },
             };
         },
-        jwt: ({ token, user }) => {
+        jwt: ({ token, user, trigger, session }) => {
             if (user) {
                 const u = user as unknown as { id: string; role: string; phone: string; staffRole?: string; permissions?: string[] };
                 return {
@@ -169,6 +189,9 @@ export const authOptions: NextAuthOptions = {
                     staffRole: u.staffRole || 'admin',
                     permissions: u.permissions || ['all'],
                 };
+            }
+            if (trigger === "update" && session) {
+                return { ...token, ...session.user };
             }
             return token;
         },

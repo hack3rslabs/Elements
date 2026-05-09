@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
-    Truck, ShieldCheck, CreditCard, Banknote,
+    ShieldCheck, CreditCard, Banknote,
     ArrowLeft, MapPin, Building,
     FileText, ChevronRight, CheckCircle2, Loader2
 } from "lucide-react";
@@ -272,7 +272,7 @@ export default function CheckoutPage() {
                                                 disabled={!form.customerName || !form.address || !form.pincode}
                                                 className="bg-[#1877F2] hover:bg-[#0d47a1] rounded-full px-10 h-12 shadow-lg"
                                             >
-                                                Next: Transport & Payment <ChevronRight className="ml-2 h-4 w-4" />
+                                                Payment <ChevronRight className="ml-2 h-4 w-4" />
                                             </Button>
                                         </div>
                                     </div>
@@ -280,12 +280,13 @@ export default function CheckoutPage() {
 
                                 {/* Step 2: Logistics & Payment */}
                                 {step === 2 && (
-                                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+                                    // <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
                                         <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border">
-                                            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                                                <Truck className="h-5 w-5 text-[#1877F2]" /> Transport Choice
-                                            </h2>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                       {/* <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                                               <Truck className="h-5 w-5 text-[#1877F2]" /> Transport Choice
+                                           </h2> */}
+                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {/* Transport Choice options are currently hidden
                                                 <div
                                                     onClick={() => setForm({ ...form, transportChoice: 'WITH_TRANSPORT' })}
                                                     className={`cursor-pointer rounded-2xl p-5 border-2 transition-all ${form.transportChoice === 'WITH_TRANSPORT' ? 'border-[#1877F2] bg-blue-50/50' : 'border-gray-100 hover:border-gray-200 bg-gray-50/30'}`}
@@ -316,8 +317,9 @@ export default function CheckoutPage() {
                                                     <h3 className="font-bold text-sm">Self Pickup / Without Transport</h3>
                                                     <p className="text-xs text-muted-foreground mt-1">Arrange your own transport to pick from our warehouse.</p>
                                                 </div>
-                                            </div>
-                                        </div>
+                                                */}
+                                            {/* </div> */}
+                                        </div> 
 
                                         <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border">
                                             <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
@@ -357,8 +359,8 @@ export default function CheckoutPage() {
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center justify-between gap-4">
-                                            <Button variant="outline" onClick={() => setStep(1)} className="rounded-full px-8 h-12">
+                                        <div className="flex items-center justify-between gap-4 py-5">
+                                            <Button variant="outline" onClick={() =>router.push('/')} className="rounded-full px-8 h-12">
                                                 <ArrowLeft className="mr-2 h-4 w-4" /> Back to Shipping
                                             </Button>
                                             <Button onClick={() => setStep(3)} className="bg-[#1877F2] hover:bg-[#0d47a1] rounded-full px-10 h-12 shadow-lg">
@@ -382,13 +384,13 @@ export default function CheckoutPage() {
                                                     <p className="text-sm text-muted-foreground mt-2">{form.phone} | {form.email}</p>
                                                 </div>
                                                 <div className="space-y-4">
-                                                    <div>
+                                                    {/* <div>
                                                         <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Logistics</h3>
                                                         <p className="text-sm font-semibold flex items-center gap-2">
                                                             {form.transportChoice === 'WITH_TRANSPORT' ? <Truck className="h-4 w-4 text-[#1877F2]" /> : <MapPin className="h-4 w-4 text-[#1877F2]" />}
                                                             {form.transportChoice === 'WITH_TRANSPORT' ? "With Transport" : "Self Pickup"}
                                                         </p>
-                                                    </div>
+                                                    </div> */}
                                                     <div>
                                                         <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Payment Method</h3>
                                                         <p className="text-sm font-semibold flex items-center gap-2">

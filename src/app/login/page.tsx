@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import {
     Phone, CheckCircle2,
-    Loader2, Lock, Mail, ShieldCheck, User as UserIcon
+    Loader2, Lock, Mail, ShieldCheck, User as UserIcon,
+    ArrowLeft
 } from "lucide-react";
 import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -20,8 +21,17 @@ export default function LoginPage() {
     const [authMode, setAuthMode] = useState<"customer" | "admin">("customer");
 
     // Customer Auth State
-    const [phone, setPhone] = useState("");
-    const [password, setPassword] = useState("");
+    const [customerName, setCustomerName] = useState("");
+    const [customerEmail, setCustomerEmail] = useState("");
+    const [customerPhone, setCustomerPhone] = useState("");
+    const [customerPassword, setCustomerPassword] = useState("");
+
+    // Forgot Password State
+    const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
+    const [fpStep, setFpStep] = useState(1); // 1: OTP & New Pass
+    const [fpOtp, setFpOtp] = useState("");
+    const [fpNewPassword, setFpNewPassword] = useState("");
+    const [fpConfirmPassword, setFpConfirmPassword] = useState("");
 
     // Admin Auth State
     const [email, setEmail] = useState("");
@@ -30,26 +40,122 @@ export default function LoginPage() {
 
     const handleCustomerLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!phone || phone.length < 10 || !password) {
-            setError("Please enter valid credentials");
+        if (!customerEmail || !customerPhone || customerPhone.length < 10 || !customerPassword) {
+            setError("Please fill in all fields (Email, Phone, and Password)");
             return;
         }
         setLoading(true);
         setError("");
         
+        const normalizedEmail = customerEmail.trim().toLowerCase();
+        
         const res = await signIn("credentials", {
-            phone: `+91${phone}`,
-            password,
+            name: customerName.trim(),
+            email: normalizedEmail,
+            phone: customerPhone,
+            password: customerPassword,
             type: "user",
             redirect: false,
         });
 
         if (res?.error) {
-            setError("Invalid phone number or password");
+            setError("Invalid credentials or registration failed");
             setLoading(false);
         } else if (res?.ok) {
             await handlePostLogin();
         }
+    };
+
+    const handleForgotPasswordRequest = async () => {
+        if (!customerEmail || !customerEmail.includes("@")) {
+            setError("Please enter your email address in the form first");
+            return;
+        }
+        setLoading(true);
+        setError("");
+        const normalizedEmail = customerEmail.trim().toLowerCase();
+        try {
+            const res = await fetch("/api/auth/forgot-password/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: normalizedEmail, phone: customerPhone }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setForgotPasswordMode(true);
+                setFpStep(1);
+            } else {
+                setError(data.message);
+            }
+        } catch {
+            setError("Failed to send verification code");
+        }
+        setLoading(false);
+    };
+
+    const handleVerifyOtp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (fpOtp.length < 6) {
+            setError("Please enter the 6-digit code");
+            return;
+        }
+        setLoading(true);
+        setError("");
+        const normalizedEmail = customerEmail.trim().toLowerCase();
+        try {
+            const res = await fetch("/api/auth/forgot-password/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: normalizedEmail, otp: fpOtp }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setFpStep(2);
+                setError("");
+            } else {
+                setError(data.message);
+            }
+        } catch {
+            setError("Verification failed");
+        }
+        setLoading(false);
+    };
+
+    const handleForgotPasswordReset = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!fpNewPassword || fpNewPassword.length < 6) {
+            setError("Password must be at least 6 characters");
+            return;
+        }
+        if (fpNewPassword !== fpConfirmPassword) {
+            setError("Passwords do not match");
+            return;
+        }
+        setLoading(true);
+        setError("");
+        const normalizedEmail = customerEmail.trim().toLowerCase();
+        try {
+            const res = await fetch("/api/auth/forgot-password/reset", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: normalizedEmail, otp: fpOtp, newPassword: fpNewPassword }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setForgotPasswordMode(false);
+                setFpStep(1);
+                setFpOtp("");
+                setFpNewPassword("");
+                setFpConfirmPassword("");
+                setError("");
+                alert("Password reset successful! You can now log in.");
+            } else {
+                setError(data.message);
+            }
+        } catch {
+            setError("Failed to reset password");
+        }
+        setLoading(false);
     };
 
     const handleAdminRequestOtp = async () => {
@@ -181,7 +287,7 @@ export default function LoginPage() {
                             {/* Auth Mode Toggle */}
                             <div className="flex bg-gray-100 p-1.5 rounded-2xl mb-10 w-fit mx-auto md:mx-0">
                                 <button
-                                    onClick={() => { setAuthMode("customer"); setError(""); setOtpSent(false); }}
+                                    onClick={() => { setAuthMode("customer"); setError(""); setOtpSent(false); setForgotPasswordMode(false); }}
                                     className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${authMode === "customer" ? "bg-white text-[#1877F2] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
                                 >
                                     <UserIcon className="h-4 w-4" />
@@ -198,11 +304,11 @@ export default function LoginPage() {
 
                             <div className="mb-8">
                                 <h1 className="text-3xl font-extrabold text-gray-900">
-                                    {authMode === "customer" ? "Sign In" : "Staff Access"}
+                                    {authMode === "customer" ? (forgotPasswordMode ? "Reset Password" : "Sign In") : "Staff Access"}
                                 </h1>
                                 <p className="text-gray-500 text-sm mt-2">
                                     {authMode === "customer" 
-                                        ? "Enter your mobile and password to continue" 
+                                        ? (forgotPasswordMode ? "Recover your account access" : "Enter details to continue") 
                                         : "Enter your registered work email to receive an OTP"}
                                 </p>
                             </div>
@@ -218,8 +324,38 @@ export default function LoginPage() {
                             )}
 
                             {/* Customer Login Form */}
-                            {authMode === "customer" && (
-                                <form onSubmit={handleCustomerLogin} className="space-y-5">
+                            {authMode === "customer" && !forgotPasswordMode && (
+                                <form onSubmit={handleCustomerLogin} className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider ml-1">Full Name</label>
+                                        <div className="relative group">
+                                            <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-[#1877F2] transition-colors" />
+                                            <input
+                                                required
+                                                type="text"
+                                                placeholder="John Doe"
+                                                value={customerName}
+                                                onChange={e => setCustomerName(e.target.value)}
+                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-12 pr-4 py-3.5 text-base font-medium outline-none focus:ring-4 focus:ring-[#1877F2]/10 focus:border-[#1877F2] transition-all"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider ml-1">Email Address</label>
+                                        <div className="relative group">
+                                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-[#1877F2] transition-colors" />
+                                            <input
+                                                required
+                                                type="email"
+                                                placeholder="john@example.com"
+                                                value={customerEmail}
+                                                onChange={e => setCustomerEmail(e.target.value)}
+                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-12 pr-4 py-3.5 text-base font-medium outline-none focus:ring-4 focus:ring-[#1877F2]/10 focus:border-[#1877F2] transition-all"
+                                            />
+                                        </div>
+                                    </div>
+
                                     <div className="space-y-1.5">
                                         <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider ml-1">Phone Number</label>
                                         <div className="relative group">
@@ -230,24 +366,33 @@ export default function LoginPage() {
                                                 type="tel"
                                                 maxLength={10}
                                                 placeholder="98765 43210"
-                                                value={phone}
-                                                onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
-                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-24 pr-4 py-4 text-base font-medium outline-none focus:ring-4 focus:ring-[#1877F2]/10 focus:border-[#1877F2] transition-all"
+                                                value={customerPhone}
+                                                onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
+                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-24 pr-4 py-3.5 text-base font-medium outline-none focus:ring-4 focus:ring-[#1877F2]/10 focus:border-[#1877F2] transition-all"
                                             />
                                         </div>
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider ml-1">Password</label>
+                                        <div className="flex justify-between items-center pr-1">
+                                            <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider ml-1">Password</label>
+                                            <button 
+                                                type="button"
+                                                onClick={handleForgotPasswordRequest}
+                                                className="text-[10px] font-bold text-[#1877F2] hover:underline"
+                                            >
+                                                Forgot Password?
+                                            </button>
+                                        </div>
                                         <div className="relative group">
                                             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-[#1877F2] transition-colors" />
                                             <input
                                                 required
                                                 type="password"
                                                 placeholder="••••••••"
-                                                value={password}
-                                                onChange={e => setPassword(e.target.value)}
-                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-12 pr-4 py-4 text-base font-medium outline-none focus:ring-4 focus:ring-[#1877F2]/10 focus:border-[#1877F2] transition-all"
+                                                value={customerPassword}
+                                                onChange={e => setCustomerPassword(e.target.value)}
+                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-12 pr-4 py-3.5 text-base font-medium outline-none focus:ring-4 focus:ring-[#1877F2]/10 focus:border-[#1877F2] transition-all"
                                             />
                                         </div>
                                     </div>
@@ -260,6 +405,104 @@ export default function LoginPage() {
                                         {loading ? <Loader2 className="h-6 w-6 animate-spin mx-auto" /> : "Sign In or Register"}
                                     </Button>
                                 </form>
+                            )}
+
+                            {/* Forgot Password Flow (Streamlined) */}
+                            {authMode === "customer" && forgotPasswordMode && (
+                                <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-500">
+                                    <div className="mb-2">
+                                        <button 
+                                            onClick={() => { setForgotPasswordMode(false); setFpStep(1); setError(""); }}
+                                            className="flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-gray-600 transition-colors"
+                                        >
+                                            <ArrowLeft className="h-3 w-3" /> Back to Login
+                                        </button>
+                                    </div>
+
+                                    {/* Step 1: Verify OTP */}
+                                    {fpStep === 1 && (
+                                        <form onSubmit={handleVerifyOtp} className="space-y-5">
+                                            <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center gap-3">
+                                                <Mail className="h-5 w-5 text-[#1877F2]" />
+                                                <div className="flex-1">
+                                                    <p className="text-[10px] uppercase font-bold text-gray-400">OTP Sent to Email</p>
+                                                    <p className="text-xs font-bold text-gray-700">{customerEmail}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-1.5">
+                                                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider ml-1">Verification Code</label>
+                                                <input
+                                                    required
+                                                    autoFocus
+                                                    type="text"
+                                                    maxLength={6}
+                                                    placeholder="000000"
+                                                    value={fpOtp}
+                                                    onChange={e => setFpOtp(e.target.value.replace(/\D/g, ''))}
+                                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-4 text-center text-2xl font-black tracking-[0.5em] outline-none focus:ring-4 focus:ring-[#1877F2]/10 focus:border-[#1877F2] transition-all"
+                                                />
+                                            </div>
+
+                                            <Button
+                                                type="submit"
+                                                disabled={loading || fpOtp.length < 6}
+                                                className="w-full bg-[#1877F2] hover:bg-[#0d47a1] rounded-2xl h-14 text-base font-bold shadow-xl shadow-blue-200 mt-4"
+                                            >
+                                                {loading ? <Loader2 className="h-6 w-6 animate-spin mx-auto" /> : "Verify OTP"}
+                                            </Button>
+                                        </form>
+                                    )}
+
+                                    {/* Step 2: Set New Password (only shown after OTP verified) */}
+                                    {fpStep === 2 && (
+                                        <form onSubmit={handleForgotPasswordReset} className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-500">
+                                            <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3">
+                                                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                                                <p className="text-xs font-bold text-emerald-700">OTP verified! Set your new password below.</p>
+                                            </div>
+
+                                            <div className="space-y-1.5">
+                                                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider ml-1">New Password</label>
+                                                <div className="relative group">
+                                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-[#1877F2] transition-colors" />
+                                                    <input
+                                                        required
+                                                        autoFocus
+                                                        type="password"
+                                                        placeholder="Min 6 characters"
+                                                        value={fpNewPassword}
+                                                        onChange={e => setFpNewPassword(e.target.value)}
+                                                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-12 pr-4 py-4 text-base font-medium outline-none focus:ring-4 focus:ring-[#1877F2]/10 focus:border-[#1877F2] transition-all"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-1.5">
+                                                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider ml-1">Confirm New Password</label>
+                                                <div className="relative group">
+                                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-[#1877F2] transition-colors" />
+                                                    <input
+                                                        required
+                                                        type="password"
+                                                        placeholder="Repeat password"
+                                                        value={fpConfirmPassword}
+                                                        onChange={e => setFpConfirmPassword(e.target.value)}
+                                                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-12 pr-4 py-4 text-base font-medium outline-none focus:ring-4 focus:ring-[#1877F2]/10 focus:border-[#1877F2] transition-all"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <Button
+                                                type="submit"
+                                                disabled={loading || !fpNewPassword || !fpConfirmPassword}
+                                                className="w-full bg-[#1877F2] hover:bg-[#0d47a1] rounded-2xl h-14 text-base font-bold shadow-xl shadow-blue-200 mt-4"
+                                            >
+                                                {loading ? <Loader2 className="h-6 w-6 animate-spin mx-auto" /> : "Update Password"}
+                                            </Button>
+                                        </form>
+                                    )}
+                                </div>
                             )}
 
                             {/* Admin Login Form */}
@@ -348,4 +591,3 @@ export default function LoginPage() {
         </div>
     );
 }
-

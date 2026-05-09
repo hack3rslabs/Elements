@@ -19,6 +19,7 @@ import ReportsTab from "./components/ReportsTab";
 import CRMTab from "./components/CRMTab";
 import PaymentsTab from "./components/PaymentsTab";
 import StaffTab from "./components/StaffTab";
+import AdminsTab from "./components/AdminsTab";
 import CustomersTab from "./components/CustomersTab";
 import ImageUploader from "@/components/ui/ImageUploader";
 import { CATEGORIES } from "@/constants/categories";
@@ -65,6 +66,7 @@ const NAV_ITEMS = [
     { icon: BarChart3, label: "Reports", key: "reports" },
     { icon: Link2, label: "Integrations", key: "integrations" },
     { icon: Users, label: "Staff & Roles", key: "staff" },
+    { icon: Shield, label: "Admins", key: "admins" },
     { icon: Users, label: "Customers", key: "customers" },
     { icon: Globe, label: "SEO", key: "seo" },
     { icon: Settings, label: "Settings", key: "settings" },
@@ -287,7 +289,11 @@ export default function AdminPage() {
         );
     }
 
-    const hasAccess = (perm: string) => userRole === 'ADMIN' || userPerms.includes('all') || (userPerms.includes('dashboard') && perm === 'dashboard') || userPerms.includes(perm);
+    const hasAccess = (perm: string) => {
+        if (userRole === 'ADMIN') return true;
+        if (perm === 'admins') return false; // Only Super Admin can see Admins tab
+        return userPerms.includes('all') || (userPerms.includes('dashboard') && perm === 'dashboard') || userPerms.includes(perm);
+    };
 
     const filteredNav = NAV_ITEMS.filter(item => hasAccess(item.key));
 
@@ -621,6 +627,7 @@ export default function AdminPage() {
                     {activeTab === "payments" && <PaymentsTab />}
                     {activeTab === "reports" && <ReportsTab />}
                     {activeTab === "integrations" && <IntegrationsTab />}
+                    {activeTab === "admins" && <AdminsTab headers={HEADERS} showToast={showToast} />}
                     {activeTab === "customers" && <CustomersTab api={API} headers={HEADERS} showToast={showToast} />}
 
                     {/* HERO SLIDES */}

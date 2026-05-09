@@ -98,6 +98,7 @@ export default function CustomersTab({ api, headers, showToast }: { api: string;
                         <thead>
                             <tr className="bg-gray-50/50 border-b">
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Phone</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Orders</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Total Spend</th>
@@ -129,6 +130,9 @@ export default function CustomersTab({ api, headers, showToast }: { api: string;
                                                 <p className="text-xs text-gray-500">{customer.email}</p>
                                             </div>
                                         </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className="text-sm text-gray-700 font-medium">{customer.phone || '\u2014'}</span>
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${customer.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'

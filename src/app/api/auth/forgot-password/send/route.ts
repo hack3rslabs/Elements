@@ -1,0 +1,103 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import nodemailer from 'nodemailer';
+
+export async function POST(request: NextRequest) {
+    if (!prisma) {
+        return NextResponse.json({ success: false, message: 'Database not initialized' }, { status: 500 });
+    }
+
+    try {
+        const { email: rawEmail, phone: rawPhone } = await request.json();
+        const email = rawEmail?.trim().toLowerCase();
+        const phone = rawPhone?.replace(/\D/g, '').slice(-10);
+        const formattedPhone = phone ? `+91${phone}` : null;
+
+        if (!email) {
+            return NextResponse.json({ success: false, message: 'Email is required' }, { status: 400 });
+        }
+
+        // 1. Find user by email OR phone (phone is needed for old accounts)
+        console.log(`[AUTH] Forgot Password: searching email="${email}", phone="${formattedPhone}"`);
+        
+        let user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email },
+                    ...(formattedPhone ? [{ phone: formattedPhone }] : [])
+                ]
+            }
+        });
+
+        if (!user) {
+            console.log(`[AUTH] No user found for email="${email}" or phone="${formattedPhone}"`);
+            return NextResponse.json({ success: false, message: 'No account found. Please register first.' }, { status: 404 });
+        }
+
+        console.log(`[AUTH] User found: ${user.id} (email=${user.email}, phone=${user.phone})`);
+
+        // 2. If the user's stored email is a placeholder (e.g. 1234567890@elements.com),
+        //    update it to the real email they provided
+        if (user.email !== email) {
+            console.log(`[AUTH] Updating user email from "${user.email}" to "${email}"`);
+            user = await prisma.user.update({
+                where: { id: user.id },
+                data: { email }
+            });
+        }
+
+        // 3. Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        // 4. Save OTP to Database
+        await prisma.verificationOTP.upsert({
+            where: { identifier: email },
+            update: {
+                otp,
+                expiresAt,
+                createdAt: new Date()
+            },
+            create: {
+                identifier: email,
+                otp,
+                expiresAt
+            }
+        });
+
+        // 5. Send Email via SMTP
+        const transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: parseInt(process.env.SMTP_PORT || '587'),
+            secure: process.env.SMTP_PORT === '465',
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS,
+            },
+        });
+
+        const mailOptions = {
+            from: `"Elements Support" <${process.env.SMTP_USER}>`,
+            to: email,
+            subject: 'Password Reset OTP - Elements',
+            text: `Your one-time password for resetting your password is: ${otp}. This code will expire in 10 minutes.`,
+            html: `
+                <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px;">
+                    <h2 style="color: #1877F2;">Password Reset Verification</h2>
+                    <p>You requested to reset your password. Use the following code to proceed:</p>
+                    <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #333; margin: 20px 0;">${otp}</div>
+                    <p style="color: #666; font-size: 14px;">This code will expire in 10 minutes. If you did not request this, please ignore this email.</p>
+                </div>
+            `,
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log(`[AUTH] Forgot Password OTP sent to: ${email}`);
+
+        return NextResponse.json({ success: true, message: 'OTP sent to your email' });
+    } catch (error: unknown) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        console.error('[AUTH] Forgot Password Send OTP Error:', errMsg);
+        return NextResponse.json({ success: false, message: `Failed to send OTP: ${errMsg}` }, { status: 500 });
+    }
+}
