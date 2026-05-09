@@ -57,7 +57,7 @@ export default function IntegrationsTab() {
     }, []);
 
     const copyWebhook = (url: string) => {
-            const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+        const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
         navigator.clipboard.writeText(`${baseUrl}${url}`);
         showToast("Webhook URL copied! Use this in your platform's settings.");
     };
@@ -79,7 +79,7 @@ export default function IntegrationsTab() {
         setIntegrations(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
     };
 
-        const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
     return (
         <div className="space-y-4">

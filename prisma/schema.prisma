@@ -318,7 +318,7 @@ model WishlistItem {
 
 model VerificationOTP {
   id         String   @id @default(cuid())
-  identifier String   @unique // Can be phone or email
+  identifier String   @unique @default("") // Can be phone or email
   otp        String
   expiresAt  DateTime
   createdAt  DateTime @default(now())
