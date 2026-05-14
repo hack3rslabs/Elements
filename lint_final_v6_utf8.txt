@@ -1,0 +1,39 @@
+﻿
+> frontend@0.1.0 lint
+> eslint
+
+
+C:\Hindustan-elements\Elements\src\app\admin\components\CRMTab.tsx
+  4:5   warning  'Users' is defined but never used        @typescript-eslint/no-unused-vars
+  6:26  warning  'Clock' is defined but never used        @typescript-eslint/no-unused-vars
+  7:5   warning  'Tag' is defined but never used          @typescript-eslint/no-unused-vars
+  7:10  warning  'IndianRupee' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Hindustan-elements\Elements\src\app\admin\components\IntegrationsTab.tsx
+  3:10  warning  'Globe' is defined but never used        @typescript-eslint/no-unused-vars
+  3:74  warning  'AlertCircle' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Hindustan-elements\Elements\src\app\admin\page.tsx
+    9:31   warning  'ImageIcon' is defined but never used                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+    9:49   warning  'ListTodo' is defined but never used                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+   11:37   warning  'Phone' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   13:39   warning  'FileText' is defined but never used                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+   13:49   warning  'Truck' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   14:53   warning  'GripVertical' is defined but never used                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+  850:128  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Hindustan-elements\Elements\src\app\api\admin\upload\route.ts
+  31:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Hindustan-elements\Elements\src\app\cart\page.tsx
+  15:5  warning  'ShieldCheck' is defined but never used  @typescript-eslint/no-unused-vars
+  16:5  warning  'Truck' is defined but never used        @typescript-eslint/no-unused-vars
+
+C:\Hindustan-elements\Elements\src\app\category\[slug]\page.tsx
+  11:16  warning  'SlidersHorizontal' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Hindustan-elements\Elements\src\app\login\page.tsx
+  45:18  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+Γ£û 18 problems (0 errors, 18 warnings)
+

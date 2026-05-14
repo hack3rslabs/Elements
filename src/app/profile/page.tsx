@@ -205,7 +205,6 @@ export default function ProfilePage() {
                                         <div className="relative group">
                                             <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-[#1877F2] transition-colors" />
                                             <input
-                                                required
                                                 type="tel"
                                                 value={formData.phone}
                                                 onChange={e => setFormData({ ...formData, phone: e.target.value })}

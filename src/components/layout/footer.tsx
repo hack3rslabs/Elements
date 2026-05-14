@@ -35,7 +35,7 @@ export function Footer() {
                         <div className="flex gap-3 pt-1">
                             {[
                                 { icon: Facebook, href: "#", label: "Facebook" },
-                                { icon: Instagram, href: "#", label: "Instagram" },
+                                { icon: Instagram, href: "https://www.instagram.com/hindusthan_elements/", label: "Instagram" },
                                 { icon: Twitter, href: "#", label: "Twitter" },
                                 { icon: Youtube, href: "#", label: "YouTube" },
                             ].map(({ icon: Icon, href, label }) => (
@@ -53,10 +53,13 @@ export function Footer() {
                             {[
                                 { name: "About Us", href: "/about" },
                                 { name: "Contact Us", href: "/contact" },
-                                { name: "Blog", href: "/blog" },
-                                { name: "FAQs", href: "/faq" },
+                                { name: "Wishlist", href: "/wishlist" },
+                                { name: "cart", href: "/cart" },
+                                // { name: "Blog", href: "/blog" },
+                                // { name: "FAQs", href: "/faq" },
                                 { name: "Track Order", href: "/track-order" },
                                 { name: "Bulk Inquiry", href: "/bulk-inquiry" },
+
                             ].map((link) => (
                                 <li key={link.name}>
                                     <Link href={link.href} className="text-sm text-gray-400 hover:text-[#1877F2] transition-colors">

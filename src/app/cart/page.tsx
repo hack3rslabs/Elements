@@ -14,6 +14,7 @@ import {
     ArrowRight,
     Tag,
 } from "lucide-react";
+import { getGSTPercentage } from "@/lib/utils";
 
 export default function CartPage() {
     const { cart, updateCartQuantity, removeFromCart, isInitialized } = useStore();
@@ -97,6 +98,9 @@ export default function CartPage() {
                                                 <div className="flex items-center gap-3 mt-2">
                                                     <span className="text-lg font-bold">
                                                         ₹{item.product.price.toLocaleString("en-IN")}
+                                                    </span>
+                                                    <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">
+                                                        + {getGSTPercentage(item.product)}% GST
                                                     </span>
 
                                                     {item.product.mrp > item.product.price && (
@@ -197,19 +201,15 @@ export default function CartPage() {
 
                                         <div className="flex justify-between text-sm">
                                             <span className="text-muted-foreground">
-                                                Delivery
+                                                GST 
                                             </span>
-                                           
+                                            <span>₹{Math.ceil(cart.gstTotal).toLocaleString("en-IN")}</span>
                                         </div>
 
                                         <div className="border-t pt-3 flex justify-between font-bold">
                                             <span>Total</span>
                                             <span className="text-[#1877F2]">
-                                                ₹
-                                                {(
-                                                    cart.subtotal +
-                                                    (cart.subtotal >= 5000 ? 0 : 99)
-                                                ).toLocaleString("en-IN")}
+                                                ₹{Math.ceil(cart.total).toLocaleString("en-IN")}
                                             </span>
                                         </div>
                                     </div>

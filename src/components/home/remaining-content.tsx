@@ -45,7 +45,7 @@ export function RemainingContent() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
             {[
               { icon: ShieldCheck, title: "Quality Assured", desc: "Every product undergoes rigorous quality testing. ISO certified.", color: "from-blue-500 to-blue-600" },
-              { icon: Truck, title: "Free Delivery", desc: "Free shipping on orders above ₹5,000. Pan-India delivery.", color: "from-emerald-500 to-green-600" },
+              { icon: Truck, title: "PAN India Delivery", desc: "We deliver our products across all India with fast and reliable shipping", color: "from-emerald-500 to-green-600" },
               { icon: Headphones, title: "Expert Support", desc: "Call anytime for product guidance, installation help, and sizing.", color: "from-purple-500 to-violet-600" },
               { icon: Award, title: "25 Yr Warranty", desc: "Up to 25 years warranty on products. Free replacement for defects.", color: "from-amber-500 to-orange-600" },
             ].map((item, i) => (

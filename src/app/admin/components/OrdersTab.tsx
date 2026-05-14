@@ -65,8 +65,11 @@ export default function OrdersTab() {
     const filtered = orders.filter(o => !search || getCustomerName(o).toLowerCase().includes(search.toLowerCase()) || o.id.toLowerCase().includes(search.toLowerCase()));
     const counts: Record<string, number> = { all: orders.length };
     STATUS_LIST.slice(1).forEach(s => { counts[s] = orders.filter(o => o.status === s).length; });
-    const totalRevenue = orders.filter(o => o.status !== "CANCELLED").reduce((sum, o) => sum + (o.total || 0), 0);
-
+    const totalRevenue = orders
+        .filter(o => o.status !== "CANCELLED" && o.status !== "PENDING")
+        .reduce((sum, o) => sum + (o.total || 0), 0);
+    const confirmedCount = orders.filter(o => o.status !== "CANCELLED" && o.status !== "PENDING").length;
+    
     return (
         <div className="space-y-4">
             {toast && <div className="fixed top-4 right-4 z-[99] bg-green-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-lg flex items-center gap-2"><CheckCircle2 className="h-4 w-4" />{toast}</div>}
@@ -116,12 +119,12 @@ export default function OrdersTab() {
             <div className="bg-gradient-to-r from-[#1877F2] to-[#0d47a1] rounded-2xl p-5 text-white">
                 <div className="flex items-center justify-between">
                     <div>
-                        <p className="text-xs text-white/70">Total Revenue (non-cancelled)</p>
+                        <p className="text-xs text-white/70">Total Revenue (Confirmed)</p>
                         <p className="text-3xl font-bold mt-1">₹{totalRevenue.toLocaleString()}</p>
                     </div>
                     <div className="text-right">
-                        <p className="text-xs text-white/70">Total Orders</p>
-                        <p className="text-3xl font-bold mt-1">{orders.length}</p>
+                        <p className="text-xs text-white/70">Confirmed Orders</p>
+                        <p className="text-3xl font-bold mt-1">{confirmedCount}</p>
                     </div>
                 </div>
             </div>

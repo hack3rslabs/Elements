@@ -23,7 +23,7 @@ enum Role {
 model User {
   id            String    @id @default(cuid())
   name          String?
-  email         String?   @unique
+  email         String    @unique
   emailVerified DateTime?
   image         String?
   password      String?
@@ -147,14 +147,39 @@ enum OrderStatus {
 }
 
 model Order {
-  id        String      @id @default(cuid())
-  userId    String
-  user      User        @relation(fields: [userId], references: [id])
-  status    OrderStatus @default(PENDING)
-  total     Decimal     @db.Decimal(10, 2)
-  items     OrderItem[]
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+  status          OrderStatus @default(PENDING)
+  total           Decimal     @db.Decimal(10, 2)
+  subtotal        Decimal     @db.Decimal(10, 2) @default(0)
+  gst             Decimal     @db.Decimal(10, 2) @default(0)
+  shipping        Decimal     @db.Decimal(10, 2) @default(0)
+  items           OrderItem[]
+  
+  // Shipping Details
+  customerName    String
+  email           String
+  phone           String
+  address         String      @db.Text
+  pincode         String
+  area            String?
+  city            String
+  state           String
+  billingAddress  String?     @db.Text
+  gstin           String?
+  
+  // Logistics & Payment
+  paymentMethod   String      @default("ONLINE") // ONLINE, COD
+  transportChoice String      @default("WITH_TRANSPORT")
+  
+  // Razorpay Tracking
+  razorpayOrderId   String?   @unique
+  razorpayPaymentId String?   @unique
+  razorpaySignature String?
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 }
 
 model OrderItem {

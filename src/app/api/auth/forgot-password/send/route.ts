@@ -8,43 +8,29 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const { email: rawEmail, phone: rawPhone } = await request.json();
+        const { email: rawEmail } = await request.json();
         const email = rawEmail?.trim().toLowerCase();
-        const phone = rawPhone?.replace(/\D/g, '').slice(-10);
-        const formattedPhone = phone ? `+91${phone}` : null;
 
         if (!email) {
             return NextResponse.json({ success: false, message: 'Email is required' }, { status: 400 });
         }
 
-        // 1. Find user by email OR phone (phone is needed for old accounts)
-        console.log(`[AUTH] Forgot Password: searching email="${email}", phone="${formattedPhone}"`);
+        // 1. Find user by email
+        console.log(`[AUTH] Forgot Password: searching email="${email}"`);
         
-        let user = await prisma.user.findFirst({
-            where: {
-                OR: [
-                    { email },
-                    ...(formattedPhone ? [{ phone: formattedPhone }] : [])
-                ]
-            }
+        const user = await prisma.user.findUnique({
+            where: { email }
         });
 
         if (!user) {
-            console.log(`[AUTH] No user found for email="${email}" or phone="${formattedPhone}"`);
+            console.log(`[AUTH] No user found for email="${email}"`);
             return NextResponse.json({ success: false, message: 'No account found. Please register first.' }, { status: 404 });
         }
 
-        console.log(`[AUTH] User found: ${user.id} (email=${user.email}, phone=${user.phone})`);
+        console.log(`[AUTH] User found: ${user.id} (email=${user.email})`);
 
         // 2. If the user's stored email is a placeholder (e.g. 1234567890@elements.com),
         //    update it to the real email they provided
-        if (user.email !== email) {
-            console.log(`[AUTH] Updating user email from "${user.email}" to "${email}"`);
-            user = await prisma.user.update({
-                where: { id: user.id },
-                data: { email }
-            });
-        }
 
         // 3. Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();

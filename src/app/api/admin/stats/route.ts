@@ -24,11 +24,29 @@ export async function GET(request: NextRequest) {
       lowStockProducts,
     ] = await Promise.all([
       prisma.product.count(),
-      prisma.order.count(),
+      prisma.order.count({
+        where: {
+          NOT: {
+            status: { in: ['PENDING', 'CANCELLED'] }
+          }
+        }
+      }),
       prisma.cRMLead.count(),
       prisma.user.count({ where: { role: 'USER' } }),
-      prisma.order.aggregate({ _sum: { total: true } }),
-      prisma.order.findMany({ select: { status: true, total: true } }),
+      prisma.order.aggregate({
+        where: {
+          NOT: {
+            status: { in: ['PENDING', 'CANCELLED'] }
+          }
+        },
+        _sum: { total: true } }),
+      prisma.order.findMany({
+        where: {
+          NOT: {
+            status: { in: ['PENDING', 'CANCELLED'] }
+          }
+        },
+        select: { status: true, total: true } }),
       prisma.cRMLead.findMany({ select: { source: true, status: true } }),
       prisma.category.findMany({ include: { _count: { select: { products: true } } } }),
       prisma.product.findMany({ where: { stock: { lte: 10 } }, take: 5, select: { id: true, name: true, stock: true, sku: true } }),

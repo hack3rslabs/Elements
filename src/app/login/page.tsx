@@ -40,8 +40,12 @@ export default function LoginPage() {
 
     const handleCustomerLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!customerEmail || !customerPhone || customerPhone.length < 10 || !customerPassword) {
-            setError("Please fill in all fields (Email, Phone, and Password)");
+        if (!customerEmail || !customerPassword) {
+            setError("Email and Password are required");
+            return;
+        }
+        if (customerPhone && customerPhone.length > 0 && customerPhone.length < 10) {
+            setError("Please enter a valid 10-digit phone number or leave it empty");
             return;
         }
         setLoading(true);
@@ -78,7 +82,7 @@ export default function LoginPage() {
             const res = await fetch("/api/auth/forgot-password/send", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: normalizedEmail, phone: customerPhone }),
+                body: JSON.stringify({ email: normalizedEmail }),
             });
             const data = await res.json();
             if (data.success) {
@@ -357,12 +361,11 @@ export default function LoginPage() {
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider ml-1">Phone Number</label>
+                                        <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider ml-1">Phone Number (Optional)</label>
                                         <div className="relative group">
                                             <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-[#1877F2] transition-colors" />
                                             <div className="absolute left-11 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-bold tracking-tight border-r pr-3 mr-3 h-5 flex items-center">+91</div>
                                             <input
-                                                required
                                                 type="tel"
                                                 maxLength={10}
                                                 placeholder="98765 43210"
@@ -372,6 +375,7 @@ export default function LoginPage() {
                                             />
                                         </div>
                                     </div>
+
 
                                     <div className="space-y-1.5">
                                         <div className="flex justify-between items-center pr-1">

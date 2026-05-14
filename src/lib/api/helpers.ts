@@ -156,14 +156,25 @@ export interface BaseProduct {
     categoryId: string;
     category?: {
         name: string;
+        slug: string;
         parent?: {
             name: string;
+            slug: string;
         } | null;
     } | null;
     reviews?: BaseReview[];
     createdAt: Date | string;
     updatedAt: Date | string;
 }
+
+import { getGSTPercentage } from "@/lib/utils";
+
+/**
+ * Calculates GST percentage based on product category.
+ * 12% for Terracotta products, 18% for others.
+ */
+// Re-exporting from shared utils
+export { getGSTPercentage };
 
 export function toProductDTO(product: BaseProduct) {
     const images = Array.isArray(product.images) ? (product.images as string[]).filter(Boolean) : [];

@@ -13,6 +13,7 @@ import {
     ArrowLeft, MapPin, Building,
     FileText, ChevronRight, CheckCircle2, Loader2
 } from "lucide-react";
+import { getGSTPercentage } from "@/lib/utils";
 
 export default function CheckoutPage() {
     const { cart, refreshCart } = useStore();
@@ -85,14 +86,33 @@ export default function CheckoutPage() {
         }
     };
 
+    const loadRazorpay = () => {
+        return new Promise((resolve) => {
+            const script = document.createElement("script");
+            script.src = "https://checkout.razorpay.com/v1/checkout.js";
+            script.onload = () => resolve(true);
+            script.onerror = () => resolve(false);
+            document.body.appendChild(script);
+        });
+    };
+
     const handleSubmitOrder = async () => {
         setLoading(true);
+        const resScript = await loadRazorpay();
+
+        if (!resScript) {
+            alert("Razorpay SDK failed to load. Check your connection.");
+            setLoading(false);
+            return;
+        }
+
         const orderData = {
             sessionId: localStorage.getItem('elements_session_id'),
             items: cart.items,
             subtotal: cart.subtotal,
-            shipping: cart.subtotal >= 5000 ? 0 : 99,
-            total: cart.subtotal + (cart.subtotal >= 5000 ? 0 : 99),
+            gst: cart.gstTotal,
+            shipping: 0,
+            total: cart.total,
             ...form,
             billingAddress: sameAsShipping ? form.address : form.billingAddress
         };
@@ -104,13 +124,66 @@ export default function CheckoutPage() {
                 body: JSON.stringify(orderData)
             });
             const data = await res.json();
-            if (data.success) {
+
+            if (!data.success) {
+                alert(`Order failed: ${data.message}${data.details ? `\nDetails: ${JSON.stringify(data.details)}` : ''}`);
+                setLoading(false);
+                return;
+            }
+
+            if (form.paymentMethod === "ONLINE") {
+                const options = {
+                    key: data.keyId,
+                    amount: data.amount,
+                    currency: data.currency,
+                    name: "Hindustan Elements",
+                    description: "Order Payment",
+                    order_id: data.razorpayOrderId,
+                    handler: async function (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) {
+                        const verifyRes = await fetch("/api/orders/verify", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                orderId: data.orderId,
+                                razorpayOrderId: response.razorpay_order_id,
+                                razorpayPaymentId: response.razorpay_payment_id,
+                                razorpaySignature: response.razorpay_signature,
+                            }),
+                        });
+                        const verifyData = await verifyRes.json();
+                        if (verifyData.success) {
+                            await refreshCart();
+                            router.push(`/order-success?id=${data.orderId}`);
+                        } else {
+                            alert("Payment verification failed. Please contact support.");
+                        }
+                    },
+                    prefill: {
+                        name: form.customerName,
+                        email: form.email,
+                        contact: form.phone,
+                    },
+                    theme: {
+                        color: "#1877F2",
+                    },
+                    modal: {
+                        ondismiss: () => {
+                            setLoading(false);
+                            setStep(3);
+                        }
+                    }
+                };
+
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const paymentObject = new (window as any).Razorpay(options);
+                paymentObject.open();
+            } else {
+                // COD Flow
                 await refreshCart();
                 router.push(`/order-success?id=${data.orderId}`);
-            } else {
-                alert(data.message || "Order failed");
             }
-        } catch {
+        } catch (error) {
+            console.error("Checkout error:", error);
             alert("Network error. Please try again.");
         }
         setLoading(false);
@@ -341,7 +414,7 @@ export default function CheckoutPage() {
                                                         {form.paymentMethod === 'ONLINE' && <div className="w-3 h-3 rounded-full bg-[#1877F2]" />}
                                                     </div>
                                                 </div>
-                                                <div
+                                                {/* <div
                                                     onClick={() => setForm({ ...form, paymentMethod: 'COD' })}
                                                     className={`flex items-center gap-4 cursor-pointer rounded-2xl p-5 border-2 transition-all ${form.paymentMethod === 'COD' ? 'border-[#1877F2] bg-blue-50/50' : 'border-gray-100 hover:border-gray-200 bg-gray-50/30'}`}
                                                 >
@@ -355,12 +428,12 @@ export default function CheckoutPage() {
                                                     <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${form.paymentMethod === 'COD' ? 'border-[#1877F2]' : 'border-gray-300'}`}>
                                                         {form.paymentMethod === 'COD' && <div className="w-3 h-3 rounded-full bg-[#1877F2]" />}
                                                     </div>
-                                                </div>
+                                                </div> */}
                                             </div>
                                         </div>
 
                                         <div className="flex items-center justify-between gap-4 py-5">
-                                            <Button variant="outline" onClick={() =>router.push('/')} className="rounded-full px-8 h-12">
+                                            <Button variant="outline" onClick={() =>router.push('/cart')} className="rounded-full px-8 h-12">
                                                 <ArrowLeft className="mr-2 h-4 w-4" /> Back to Shipping
                                             </Button>
                                             <Button onClick={() => setStep(3)} className="bg-[#1877F2] hover:bg-[#0d47a1] rounded-full px-10 h-12 shadow-lg">
@@ -417,7 +490,7 @@ export default function CheckoutPage() {
                                                 disabled={loading}
                                                 className="bg-[#1877F2] hover:bg-[#0d47a1] rounded-full px-12 h-12 shadow-lg font-bold"
                                             >
-                                                {loading ? "Placing Order..." : "Confirm & Place Order"}
+                                                {loading ? "Placing Order..." : "payment & confirm order"}
                                             </Button>
                                         </div>
                                     </div>
@@ -441,7 +514,12 @@ export default function CheckoutPage() {
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-xs font-medium line-clamp-1">{item.product.name}</p>
-                                                    <p className="text-[10px] text-muted-foreground mt-0.5">Qty: {item.quantity}</p>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <p className="text-[10px] text-muted-foreground">Qty: {item.quantity}</p>
+                                                        <span className="text-[8px] bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded-full border">
+                                                            {getGSTPercentage(item.product)}% GST
+                                                        </span>
+                                                    </div>
                                                 </div>
                                                 <p className="text-xs font-bold">₹{(item.product.price * item.quantity).toLocaleString("en-IN")}</p>
                                             </div>
@@ -454,14 +532,18 @@ export default function CheckoutPage() {
                                             <span>₹{cart.subtotal.toLocaleString("en-IN")}</span>
                                         </div>
                                         <div className="flex justify-between text-sm">
-                                            <span className="text-muted-foreground">Shipping</span>
-                                            <span className="text-green-600 font-medium">{cart.subtotal >= 5000 ? 'FREE' : '₹99'}</span>
+                                            <span className="text-muted-foreground">GST </span>
+                                            <span className="text-gray-600 font-medium">₹{Math.ceil(cart.gstTotal).toLocaleString("en-IN")}</span>
                                         </div>
-                                        <div className="pt-3 flex justify-between text-base font-bold">
-                                            <span>Total</span>
-                                            <span className="text-[#1877F2]">₹{(cart.subtotal + (cart.subtotal >= 5000 ? 0 : 99)).toLocaleString("en-IN")}</span>
+                                         <div className="pt-3 flex justify-between text-base  text-sm">
+                                            <span>Transport</span>
+                                            <span className="text-[#1877F2] text-[10px]">+ Delivery</span>    
                                         </div>
                                     </div>
+                                        <div className="pt-3 flex justify-between text-base font-bold">
+                                            <span>Total</span>
+                                            <span className="text-[#1877F2]">₹{Math.round(cart.total).toLocaleString("en-IN")}</span>    
+                                        </div>
 
                                     <div className="mt-8 space-y-3">
                                         <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium p-3 bg-gray-50 rounded-xl">

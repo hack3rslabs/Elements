@@ -13,12 +13,22 @@ interface CartItem {
         image: string;
         slug: string;
         images?: string[];
+        category?: {
+            name: string;
+            slug: string;
+            parent?: {
+                name: string;
+                slug: string;
+            } | null;
+        } | null;
     };
 }
 
 interface CartState {
     items: CartItem[];
     subtotal: number;
+    gstTotal: number;
+    total: number;
     mrpTotal: number;
     savings: number;
     itemCount: number;
@@ -54,7 +64,7 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
     // 1. Core State
-    const [cart, setCart] = useState<CartState>({ items: [], subtotal: 0, mrpTotal: 0, savings: 0, itemCount: 0 });
+    const [cart, setCart] = useState<CartState>({ items: [], subtotal: 0, gstTotal: 0, total: 0, mrpTotal: 0, savings: 0, itemCount: 0 });
     const [wishlist, setWishlist] = useState<WishlistProduct[]>([]);
     const [cartLoading, setCartLoading] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);

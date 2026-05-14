@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 
 export async function GET() {
     const session = await getServerSession(authOptions);
@@ -53,7 +53,7 @@ export async function PATCH(request: NextRequest) {
         const { name, phone, email } = body;
 
         // Validation
-        if (!name || !phone || !email) {
+        if (!name || !email) {
             return NextResponse.json({ success: false, message: 'Missing required fields' }, { status: 400 });
         }
 

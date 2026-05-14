@@ -9,7 +9,7 @@ import {
     LayoutDashboard, Package, Users, Megaphone,
     Search as SearchIcon, Settings, Menu, X, Plus, Edit, Trash2, Eye,
     TrendingUp, ShoppingCart, Star, BarChart3, Globe, ArrowUpRight,
-    Bell, LogOut, Upload, Save, CheckCircle2, AlertCircle,
+    LogOut, Upload, Save, CheckCircle2, AlertCircle,
     Sparkles, Shield, Loader2, Link2, CreditCard,
     ArrowDownRight, IndianRupee, SlidersHorizontal, ToggleLeft, ToggleRight
 } from "lucide-react";
@@ -65,7 +65,7 @@ const NAV_ITEMS = [
     { icon: Megaphone, label: "Campaigns", key: "campaigns" },
     { icon: BarChart3, label: "Reports", key: "reports" },
     { icon: Link2, label: "Integrations", key: "integrations" },
-    { icon: Users, label: "Staff & Roles", key: "staff" },
+   // { icon: Users, label: "Staff & Roles", key: "staff" },
     { icon: Shield, label: "Admins", key: "admins" },
     { icon: Users, label: "Customers", key: "customers" },
     { icon: Globe, label: "SEO", key: "seo" },
@@ -375,7 +375,6 @@ export default function AdminPage() {
                     <h1 className="hidden md:block font-semibold text-sm md:text-base capitalize">{activeTab === 'crm' ? 'CRM / Leads' : activeTab}</h1>
                     <div className="flex-1 hidden md:block" />
                     <div className="flex items-center gap-3">
-                        <button aria-label="Notifications" className="h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center relative"><Bell className="h-4 w-4" /><span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-red-500 text-white text-[9px] rounded-full flex items-center justify-center font-bold">{ds?.totalLeads || 0}</span></button>
                         <span className="text-xs text-gray-500 hidden md:inline">{session?.user?.name || 'Admin'}</span>
                         <button onClick={() => signOut({ callbackUrl: '/login' })} className="hidden md:flex h-9 w-9 rounded-full bg-red-50 items-center justify-center hover:bg-red-100 transition-colors" title="Logout"><LogOut className="h-4 w-4 text-red-500" /></button>
                     </div>

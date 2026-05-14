@@ -1,20 +1,20 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../auth/[...nextauth]/route";
+import { authOptions } from "../../../lib/auth";
 
 async function getCart(userId: string | null, sessionId: string) {
     if (!prisma) return null;
     if (userId) {
         const sessionCart = await prisma.cart.findUnique({ where: { sessionId }, include: { items: true } });
-        let userCart = await prisma.cart.findUnique({ where: { userId }, include: { items: { include: { product: true } } } });
+        let userCart = await prisma.cart.findUnique({ where: { userId }, include: { items: { include: { product: { include: { category: { include: { parent: true } } } } } } } });
 
         if (sessionCart && sessionCart.items.length > 0) {
             if (!userCart) {
                 userCart = await prisma.cart.update({
                     where: { id: sessionCart.id },
                     data: { userId, sessionId: null },
-                    include: { items: { include: { product: true } } }
+                    include: { items: { include: { product: { include: { category: { include: { parent: true } } } } } } }
                 });
             } else {
                 for (const item of sessionCart.items) {
@@ -33,7 +33,7 @@ async function getCart(userId: string | null, sessionId: string) {
                     }
                 }
                 await prisma.cart.delete({ where: { id: sessionCart.id } });
-                userCart = await prisma.cart.findUnique({ where: { userId }, include: { items: { include: { product: true } } } });
+                userCart = await prisma.cart.findUnique({ where: { userId }, include: { items: { include: { product: { include: { category: { include: { parent: true } } } } } } } });
             }
         } else if (sessionCart && sessionCart.items.length === 0) {
             await prisma.cart.delete({ where: { id: sessionCart.id } });
@@ -43,7 +43,7 @@ async function getCart(userId: string | null, sessionId: string) {
     
     return prisma.cart.findUnique({
         where: { sessionId },
-        include: { items: { include: { product: true } } },
+        include: { items: { include: { product: { include: { category: { include: { parent: true } } } } } } },
     });
 }
 
@@ -52,23 +52,43 @@ interface CartItemWithProduct {
     product: {
         price: unknown;
         mrp: unknown;
+        category?: {
+            name?: string;
+            slug?: string;
+            parent?: {
+                name?: string;
+                slug?: string;
+            } | null;
+        } | null;
     };
 }
 
+import { getGSTPercentage } from "@/lib/api/helpers";
+
 function calculateTotals(items: CartItemWithProduct[]) {
     let subtotal = 0;
+    let gstTotal = 0;
     let mrpTotal = 0;
     let itemCount = 0;
 
     items.forEach(item => {
-        subtotal += Number(item.product.price) * item.quantity;
-        mrpTotal += Number(item.product.mrp) * item.quantity;
-        itemCount += item.quantity;
+        const price = Number(item.product.price);
+        const qty = item.quantity;
+        const gstRate = getGSTPercentage(item.product);
+        const itemSubtotal = price * qty;
+        const itemGst = (itemSubtotal * gstRate) / 100;
+
+        subtotal += itemSubtotal;
+        gstTotal += itemGst;
+        mrpTotal += Number(item.product.mrp) * qty;
+        itemCount += qty;
     });
 
     return {
         items,
-        subtotal,
+        subtotal: Math.round(subtotal * 100) / 100,
+        gstTotal: Math.round(gstTotal * 100) / 100,
+        total: Math.round((subtotal + gstTotal) * 100) / 100,
         mrpTotal,
         savings: mrpTotal - subtotal,
         itemCount
@@ -119,7 +139,7 @@ export async function POST(req: Request) {
                     userId,
                     sessionId: userId ? null : sessionId
                 },
-                include: { items: { include: { product: true } } }
+                include: { items: { include: { product: { include: { category: { include: { parent: true } } } } } } }
             });
         }
 
