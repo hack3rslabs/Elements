@@ -1,0 +1,11 @@
+﻿
+> frontend@0.1.0 lint
+> eslint
+
+
+C:\Hindustan-elements\Elements\src\components\products\FilterSidebar.tsx
+  15:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Γ£û 2 problems (2 errors, 0 warnings)
+

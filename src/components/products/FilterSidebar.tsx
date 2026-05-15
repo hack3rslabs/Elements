@@ -10,10 +10,22 @@ interface Facets {
     counts: { inStock: number; bestSellers: number; newArrivals: number };
 }
 
+interface ActiveFilters {
+    sort: string;
+    minPrice: string;
+    maxPrice: string;
+    material: string[];
+    finish: string[];
+    minRating: string;
+    stockStatus: string;
+    bestSeller: string;
+    newArrival: string;
+}
+
 interface FilterSidebarProps {
     facets: Facets | null;
-    activeFilters: any; 
-    onFilterChange: (filters: any) => void;
+    activeFilters: ActiveFilters; 
+    onFilterChange: (filters: ActiveFilters) => void;
     onClearAll: () => void;
 }
 
@@ -31,15 +43,14 @@ export function FilterSidebar({ facets, activeFilters, onFilterChange, onClearAl
     };
 
     const handlePriceChange = (type: 'min' | 'max', value: string) => {
-        const val = parseInt(value) || 0;
         onFilterChange({ 
             ...activeFilters, 
-            [type === 'min' ? 'minPrice' : 'maxPrice']: val 
+            [type === 'min' ? 'minPrice' : 'maxPrice']: value 
         });
     };
 
     const toggleFacet = (type: 'material' | 'finish', value: string) => {
-        const current = Array.isArray(activeFilters[type]) ? activeFilters[type] : activeFilters[type] ? [activeFilters[type]] : [];
+        const current = activeFilters[type] || [];
         const next = current.includes(value) 
             ? current.filter((v: string) => v !== value)
             : [...current, value];
@@ -47,13 +58,14 @@ export function FilterSidebar({ facets, activeFilters, onFilterChange, onClearAl
     };
 
     const setRating = (rating: number) => {
-        onFilterChange({ ...activeFilters, minRating: activeFilters.minRating === rating ? null : rating });
+        const rStr = rating.toString();
+        onFilterChange({ ...activeFilters, minRating: activeFilters.minRating === rStr ? "" : rStr });
     };
 
     const toggleStock = () => {
         onFilterChange({ 
             ...activeFilters, 
-            stockStatus: activeFilters.stockStatus === 'IN_STOCK' ? null : 'IN_STOCK' 
+            stockStatus: activeFilters.stockStatus === 'IN_STOCK' ? "" : 'IN_STOCK' 
         });
     };
 
@@ -215,7 +227,7 @@ export function FilterSidebar({ facets, activeFilters, onFilterChange, onClearAl
                             <button 
                                 key={r}
                                 onClick={() => setRating(r)}
-                                className={`flex items-center gap-2 w-full text-sm py-1 px-2 rounded-lg transition-colors ${activeFilters.minRating === r ? 'bg-amber-50 text-amber-900' : 'hover:bg-gray-50 text-gray-600'}`}
+                                className={`flex items-center gap-2 w-full text-sm py-1 px-2 rounded-lg transition-colors ${activeFilters.minRating === r.toString() ? 'bg-amber-50 text-amber-900' : 'hover:bg-gray-50 text-gray-600'}`}
                             >
                                 <div className="flex gap-0.5">
                                     {[1, 2, 3, 4, 5].map(star => (
@@ -233,13 +245,13 @@ export function FilterSidebar({ facets, activeFilters, onFilterChange, onClearAl
             <div className="border-t pt-6">
                 <div className="flex flex-wrap gap-2">
                     <button 
-                        onClick={() => onFilterChange({ ...activeFilters, bestSeller: activeFilters.bestSeller === 'true' ? null : 'true' })}
+                        onClick={() => onFilterChange({ ...activeFilters, bestSeller: activeFilters.bestSeller === 'true' ? "" : 'true' })}
                         className={`text-[10px] font-bold px-3 py-1.5 rounded-full border transition-all ${activeFilters.bestSeller === 'true' ? 'bg-orange-500 border-orange-500 text-white' : 'bg-white text-orange-600 border-orange-200 hover:border-orange-500'}`}
                     >
                         BEST SELLERS
                     </button>
                     <button 
-                        onClick={() => onFilterChange({ ...activeFilters, newArrival: activeFilters.newArrival === 'true' ? null : 'true' })}
+                        onClick={() => onFilterChange({ ...activeFilters, newArrival: activeFilters.newArrival === 'true' ? "" : 'true' })}
                         className={`text-[10px] font-bold px-3 py-1.5 rounded-full border transition-all ${activeFilters.newArrival === 'true' ? 'bg-[#1877F2] border-[#1877F2] text-white' : 'bg-white text-[#1877F2] border-blue-200 hover:border-[#1877F2]'}`}
                     >
                         NEW ARRIVALS

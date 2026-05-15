@@ -74,14 +74,10 @@ export const CATEGORIES: Category[] = [
       { name: "FRP MANHOLE COVERS", slug: "FRP", image: "/images/products/frp.png" },
       { name: "SS RECESSED", slug: "ssinlay", image: "/images/products/ss-inlay.png" },
       { name: "FRP RECESSED", slug: "frpinlay", image: "/images/products/frp-inlay.png" },
-      { 
-        name: "TRAP DOORS", 
-        slug: "trapdoors", 
+      {
+        name: "TRAP DOORS",
+        slug: "trapdoors",
         image: "/images/products/trap.png",
-        subCategories: [
-          { name: "Wall Trap Doors", slug: "wall-trapdoor", image: "/images/products/trap.png" },
-          { name: "Ceiling Trap Doors", slug: "ceiling-trapdoor", image: "/images/products/trap.png" }
-        ]
       },
     ]
   },
