@@ -44,6 +44,18 @@ interface Facets {
     counts: { inStock: number; bestSellers: number; newArrivals: number };
 }
 
+interface FilterState {
+    sort: string;
+    minPrice: string;
+    maxPrice: string;
+    material: string[];
+    finish: string[];
+    minRating: string;
+    stockStatus: string;
+    bestSeller: string;
+    newArrival: string;
+}
+
 export default function CategoryPage() {
     const params = useParams();
     const router = useRouter();
@@ -58,9 +70,9 @@ export default function CategoryPage() {
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [showMobileFilters, setShowMobileFilters] = useState(false);
-
+    
     // Filter State
-    const [filters, setFilters] = useState({
+    const [filters, setFilters] = useState<FilterState>({
         sort: searchParams.get("sort") || "featured",
         minPrice: searchParams.get("minPrice") || "",
         maxPrice: searchParams.get("maxPrice") || "",
@@ -72,7 +84,7 @@ export default function CategoryPage() {
         newArrival: searchParams.get("newArrival") || "",
     });
 
-    const updateFilters = (newFilters: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    const updateFilters = (newFilters: FilterState) => {
         setFilters(newFilters);
         // Update URL
         const params = new URLSearchParams();

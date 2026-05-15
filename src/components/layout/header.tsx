@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect, useRef } from "react";
+import { CATEGORIES } from "@/constants/categories";
+import { isLeafCategory } from "@/lib/category-helpers";
 
 export function Header() {
     const { data: session, status } = useSession();
@@ -55,27 +57,14 @@ export function Header() {
         };
     }, [searchQuery]);
 
-    const navCategories: { name: string; href: string; children?: { name: string; href: string }[] }[] = [
-        // {
-        //     name: "Kitchen Sinks", href: "/", children: [
-        //         { name: "Quartz Sinks", href: "/category/quartz-sinks" },
-        //         { name: "Handmade Sinks", href: "/category/handmade-sinks" },
-        //         { name: "Multi Functional Sinks", href: "/category/multi-functional-sinks" },
-        //     ]
-        // },
-        // {
-        //     name: "Manhole Covers", href: "/", children: [
-        //         { name: "Commercial Metrocover", href: "/category/comercial" },
-        //         { name: "Domestic Truecover", href: "/category/domestic" },
-        //     ]
-        // },
-        // {
-        //     name: "Elevation", href: "/category/terracota-products", children: [
-        //         { name: "Mitti Magic", href: "/category/terracota-products" },
-        //         { name: "Exterior Cladding", href: "/category/terracota-products" },
-        //     ]
-        // },
-    ];
+    const navCategories = CATEGORIES.map(cat => ({
+        name: cat.name,
+        href: isLeafCategory(cat) ? `/category/${cat.slug}` : `/categories/${cat.slug}`,
+        children: cat.subCategories?.map(sub => ({
+            name: sub.name,
+            href: isLeafCategory(sub) ? `/category/${sub.slug}` : `/categories/${cat.slug}/${sub.slug}`
+        }))
+    }));
 
     return (
         <>
