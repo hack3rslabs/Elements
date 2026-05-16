@@ -330,7 +330,7 @@ export default function AdminPage() {
             </aside>
 
             {/* Mobile Bottom Navigation */}
-            <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t flex items-center justify-around px-2 py-2 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] overflow-x-auto">
+            <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t flex items-center justify-around px-2 py-2 overflow-x-auto">
                 {filteredNav.slice(0, 5).map(item => (
                     <button key={item.key} onClick={() => setActiveTab(item.key)} className={`flex flex-col items-center p-2 min-w-[64px] rounded-xl transition-all ${activeTab === item.key ? 'text-[#1877F2] font-bold' : 'text-gray-400 hover:text-gray-900'}`}>
                         <item.icon className={`h-5 w-5 mb-1 ${activeTab === item.key ? 'fill-[#1877F2]/10 text-[#1877F2]' : ''}`} />

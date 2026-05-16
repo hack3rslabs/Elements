@@ -622,7 +622,7 @@ export default function ProductPage() {
                 </div>
 
                 {/* Mobile Sticky Bottom Action Bar */}
-                <div className="md:hidden fixed bottom-16 left-0 right-0 z-[90] bg-white/95 backdrop-blur-xl border-t shadow-lg p-3 flex items-center gap-2">
+                <div className="md:hidden fixed bottom-16 left-0 right-0 z-[90] bg-white border-t p-3 flex items-center gap-2">
                     <div className="flex-1">
                         <span className="text-lg font-bold">₹{product.price.toLocaleString("en-IN")}</span>
                         {product.mrp > product.price && (

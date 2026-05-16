@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Search, ShoppingCart, Heart, User, Menu, X, Phone, Mail, ChevronDown } from "lucide-react";
+import { Search, ShoppingCart, Heart, User, Menu, X, Phone, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 import { useSession, signOut } from "next-auth/react";
@@ -111,7 +111,7 @@ export function Header() {
                         />
                     </Link>
 
-                    {/* Desktop Nav */}
+                    {/* Desktop Nav
                     <nav className="hidden md:flex items-center gap-1 ml-6">
                         {navCategories.map((cat) => (
                             <div key={cat.name} className="group relative">
@@ -123,7 +123,7 @@ export function Header() {
                                     <ChevronDown className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity" />
                                 </Link>
                                 {/* Dropdown */}
-                                <div className="absolute left-0 top-full pt-1 invisible group-hover:visible opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300 ease-out z-50">
+                                {/* <div className="absolute left-0 top-full pt-1 invisible group-hover:visible opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300 ease-out z-50">
                                     <div className="bg-white rounded-xl shadow-xl border p-2 min-w-[200px]">
                                         {cat.children?.map((child) => (
                                             <Link
@@ -138,7 +138,7 @@ export function Header() {
                                 </div>
                             </div>
                         ))}
-                    </nav>
+                    </nav> */} 
 
                     {/* Search + Icons */}
                     <div className="flex flex-1 items-center justify-end gap-2">
