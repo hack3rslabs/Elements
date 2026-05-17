@@ -113,15 +113,15 @@ export function Footer() {
                         <h4 className="font-semibold text-white mb-4 text-sm uppercase tracking-wider">Contact Us</h4>
                         <ul className="space-y-4">
                             <li>
-                                <a href="tel:+919866753070" className="flex items-center gap-3 text-sm text-gray-400 hover:text-[#1877F2] transition-colors">
+                                <a href="tel:+919496664445" className="flex items-center gap-3 text-sm text-gray-400 hover:text-[#1877F2] transition-colors">
                                     <Phone className="h-4 w-4 shrink-0 text-[#1877F2]" />
-                                    +91 98667 53070
+                                    +91 9496664445
                                 </a>
                             </li>
                             <li>
-                                <a href="mailto:support@hindusthanelements.com" className="flex items-center gap-3 text-sm text-gray-400 hover:text-[#1877F2] transition-colors">
+                                <a href="mailto:hindustanelements98@gmail.com" className="flex items-center gap-3 text-sm text-gray-400 hover:text-[#1877F2] transition-colors">
                                     <Mail className="h-4 w-4 shrink-0 text-[#1877F2]" />
-                                    support@hindusthanelements.com
+                                    hindustanelements98@gmail.com
                                 </a>
                             </li>
                             <li className="pt-2 border-t border-white/5">

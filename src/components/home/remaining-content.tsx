@@ -24,7 +24,7 @@ export function RemainingContent() {
               { icon: ShieldCheck, text: "ISO Certified", highlight: false },
               { icon: Truck, text: "Free Delivery ₹5K+", highlight: false },
               { icon: Headphones, text: "Expert Support", highlight: false },
-              { icon: Phone, text: "Call: +91 99955 52252", highlight: false },
+              { icon: Phone, text: "Call: +91 94966 64445", highlight: false },
             ].map(item => (
               <div key={item.text} className={`flex items-center gap-1.5 shrink-0 ${item.highlight ? 'text-amber-600 font-bold' : ''}`}>
                 <item.icon className={`h-4 w-4 ${item.highlight ? 'text-amber-500' : 'text-[#1877F2]'}`} />
@@ -87,16 +87,16 @@ export function RemainingContent() {
             <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
               <h3 className="font-semibold text-lg mb-4">Get In Touch</h3>
               <div className="space-y-3">
-                <a href="tel:+919995552252" className="flex items-center gap-3 bg-white/5 rounded-xl p-3 hover:bg-white/10 transition-colors">
+                <a href="tel:+919496664445" className="flex items-center gap-3 bg-white/5 rounded-xl p-3 hover:bg-white/10 transition-colors">
                   <div className="h-10 w-10 rounded-full bg-[#1877F2] flex items-center justify-center shrink-0">
                     <Phone className="h-5 w-5" />
                   </div>
                   <div>
                     <p className="text-sm font-medium">Call Us</p>
-                    <p className="text-xs text-gray-400">+919995552252</p>
+                    <p className="text-xs text-gray-400">+919496664445</p>
                   </div>
                 </a>
-                <a href={`https://wa.me/919995552252?text=${encodeURIComponent("Hi! I need bulk pricing for my project.")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-white/5 rounded-xl p-3 hover:bg-white/10 transition-colors">
+                <a href={`https://wa.me/919496664445?text=${encodeURIComponent("Hi! I need bulk pricing for my project.")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-white/5 rounded-xl p-3 hover:bg-white/10 transition-colors">
                   <div className="h-10 w-10 rounded-full bg-[#25D366] flex items-center justify-center shrink-0">
                     <MessageCircle className="h-5 w-5" />
                   </div>

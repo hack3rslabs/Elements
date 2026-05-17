@@ -28,7 +28,8 @@ export function LeadGenGate() {
 
             // Show close button after additional 5 seconds
             setTimeout(() => setShowClose(true), 5000);
-        }, 90000);
+
+        }, 10000);
 
         return () => {
             clearTimeout(timer);

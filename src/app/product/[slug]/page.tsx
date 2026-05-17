@@ -287,10 +287,10 @@ export default function ProductPage() {
                                 <div className="flex flex-col sm:flex-row gap-2">
                                     <WhatsAppButton productName={product.name} className="h-10 px-4 text-sm font-semibold flex-1 justify-center" />
                                     <a
-                                        href="tel:+919995552252"
+                                        href="tel:+919496664445"
                                         className="inline-flex items-center justify-center gap-2 bg-[#1877F2] hover:bg-[#0d47a1] text-white rounded-full h-10 px-4 text-sm font-semibold transition-colors shadow-md flex-1"
                                     >
-                                        <Phone className="h-4 w-4" /> Call: +91 99955 52252
+                                        <Phone className="h-4 w-4" /> Call: +91 94966 64445
                                     </a>
                                 </div>
                                 <p className="text-xs text-green-700 mt-2.5 flex items-center gap-1">
@@ -563,7 +563,7 @@ export default function ProductPage() {
                                             <h5 className="text-sm font-semibold mb-2">👷 Need a Professional?</h5>
                                             <p className="text-xs text-muted-foreground mb-3">We can connect you with verified installers in your city.</p>
                                             <a
-                                                href="tel:+919995552252"
+                                                href="tel:+919496664445"
                                                 className="inline-flex items-center gap-2 text-xs text-[#1877F2] font-medium hover:underline"
                                             >
                                                 <Phone className="h-3.5 w-3.5" /> Call for Installer Referral
@@ -575,7 +575,7 @@ export default function ProductPage() {
                                             <MessageCircle className="h-4 w-4" /> Installation Support Available
                                         </p>
                                         <p className="text-xs text-green-700 mt-1">
-                                            Call <a href="tel:+919995552252" className="font-bold underline">+91 99955 52252</a> during installation — our experts will guide you live on the phone.
+                                            Call <a href="tel:+919496664445" className="font-bold underline">+91 94966 64445</a> during installation — our experts will guide you live on the phone.
                                         </p>
                                     </div>
                                 </div>
@@ -637,7 +637,7 @@ export default function ProductPage() {
                         <ShoppingCart className="h-4 w-4 mr-1.5" /> Add to Cart
                     </Button>
                     <a
-                        href={`https://wa.me/919995552252?text=${encodeURIComponent(`Hi! I need details about: ${product.name}`)}`}
+                        href={`https://wa.me/919496664445?text=${encodeURIComponent(`Hi! I need details about: ${product.name}`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="h-10 w-10 rounded-full bg-[#25D366] flex items-center justify-center text-white shadow-md shrink-0"

@@ -38,7 +38,7 @@ export default function CustomersTab({ api, headers, showToast }: { api: string;
                 .catch(() => {
                     // Fallback dummy data for development
                     setCustomers([
-                        { id: '1', name: 'Raj Kumar', email: 'raj@example.com', phone: '+91 9995552252', totalOrders: 5, totalSpend: 15400, lastOrder: '2026-02-20', status: 'active', joined: '2025-10-15' },
+                        { id: '1', name: 'Raj Kumar', email: 'raj@example.com', phone: '+91 9496664445', totalOrders: 5, totalSpend: 15400, lastOrder: '2026-02-20', status: 'active', joined: '2025-10-15' },
                         { id: '2', name: 'Anita Sharma', email: 'anita@example.com', phone: '+91 9884441141', totalOrders: 2, totalSpend: 8200, lastOrder: '2026-02-15', status: 'active', joined: '2025-12-05' },
                         { id: '3', name: 'Vikram Singh', email: 'vikram@example.com', phone: '+91 9773330030', totalOrders: 0, totalSpend: 0, lastOrder: null, status: 'inactive', joined: '2026-01-10' },
                     ]);

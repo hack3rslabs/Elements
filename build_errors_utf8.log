@@ -1,0 +1,83 @@
+﻿
+> frontend@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.1.6 (Turbopack)
+- Environments: .env.local, .env
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 31.7s
+  Running TypeScript ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/40) ...
+  Generating static pages using 11 workers (10/40) 
+  Generating static pages using 11 workers (20/40) 
+  Generating static pages using 11 workers (30/40) 
+Γ£ô Generating static pages using 11 workers (40/40) in 952.0ms
+  Finalizing page optimization ...
+
+Route (app)
+Γöî Γùï /
+Γö£ Γùï /_not-found
+Γö£ Γùï /about
+Γö£ Γùï /admin
+Γö£ ╞Æ /api/admin/admins
+Γö£ ╞Æ /api/admin/admins/[id]
+Γö£ ╞Æ /api/admin/customers
+Γö£ ╞Æ /api/admin/integrations
+Γö£ ╞Æ /api/admin/leads
+Γö£ ╞Æ /api/admin/leads/[id]
+Γö£ ╞Æ /api/admin/leads/[id]/convert
+Γö£ ╞Æ /api/admin/leads/[id]/followups
+Γö£ ╞Æ /api/admin/leads/[id]/notes
+Γö£ ╞Æ /api/admin/leads/[id]/status
+Γö£ ╞Æ /api/admin/orders
+Γö£ ╞Æ /api/admin/orders/[id]/status
+Γö£ ╞Æ /api/admin/staff
+Γö£ ╞Æ /api/admin/stats
+Γö£ ╞Æ /api/admin/upload
+Γö£ ╞Æ /api/analytics
+Γö£ ╞Æ /api/auth/[...nextauth]
+Γö£ ╞Æ /api/auth/admin/send-otp
+Γö£ ╞Æ /api/auth/forgot-password/reset
+Γö£ ╞Æ /api/auth/forgot-password/send
+Γö£ ╞Æ /api/auth/forgot-password/verify
+Γö£ ╞Æ /api/cart
+Γö£ ╞Æ /api/cart/[productId]
+Γö£ ╞Æ /api/categories
+Γö£ ╞Æ /api/categories/[slug]
+Γö£ ╞Æ /api/contact
+Γö£ ╞Æ /api/heroslides
+Γö£ ╞Æ /api/heroslides/[id]
+Γö£ ╞Æ /api/leads
+Γö£ ╞Æ /api/orders
+Γö£ ╞Æ /api/orders/verify
+Γö£ ╞Æ /api/pincode/[pin]
+Γö£ ╞Æ /api/products
+Γö£ ╞Æ /api/products/[identifier]
+Γö£ ╞Æ /api/search
+Γö£ ╞Æ /api/user/profile
+Γö£ ╞Æ /api/webhooks/[provider]
+Γö£ ╞Æ /api/wishlist
+Γö£ ╞Æ /api/wishlist/[productId]
+Γö£ Γùï /cart
+Γö£ Γùï /categories
+Γö£ ╞Æ /categories/[category]
+Γö£ ╞Æ /categories/[category]/[subCategory]
+Γö£ ╞Æ /category/[slug]
+Γö£ Γùï /checkout
+Γö£ Γùï /contact
+Γö£ Γùï /kitchen
+Γö£ Γùï /login
+Γö£ Γùï /order-success
+Γö£ ╞Æ /product/[slug]
+Γö£ Γùï /profile
+Γö£ Γùï /track-order
+Γöö Γùï /wishlist
+
+
+╞Æ Proxy (Middleware)
+
+Γùï  (Static)   prerendered as static content
+╞Æ  (Dynamic)  server-rendered on demand
+

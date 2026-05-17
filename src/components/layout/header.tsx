@@ -75,11 +75,11 @@ export function Header() {
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-200 font-semibold text-[10px] tracking-wide">
                             ⭐ 15+ Years of Trust
                         </span>
-                        <a href="tel:+919995552252" className="flex items-center gap-1 hover:text-blue-200 transition-colors">
-                            <Phone className="h-3 w-3" /> +91 9995552252
+                        <a href="tel:+919496664445" className="flex items-center gap-1 hover:text-blue-200 transition-colors">
+                            <Phone className="h-3 w-3" /> +91 9496664445
                         </a>
-                        <a href="mailto:skceramics999@gmail.com" className="flex items-center gap-1 hover:text-blue-200 transition-colors">
-                            <Mail className="h-3 w-3" /> skceramics999@gmail.com
+                        <a href="mailto:hindustanelements98@gmail.com" className="flex items-center gap-1 hover:text-blue-200 transition-colors">
+                            <Mail className="h-3 w-3" /> hindustanelements98@gmail.com
                         </a>
                     </div>
                 </div>

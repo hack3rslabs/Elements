@@ -61,9 +61,9 @@ export default function ContactPage() {
                             {[
                                 { icon: MapPin, title: "Visakhapatnam Branch", info: "54-11-13/5, Bhanu Nagar Rd, GO Colony, Visakhapatnam", sub: "Andhra Pradesh 530017", href: "https://www.google.com/maps/place/Sree+Kameswari+Ceramics/@17.7417647,83.3245967,17z/data=!3m1!4b1!4m6!3m5!1s0x3a39432f1a682a31:0x23f216d34951248a!8m2!3d17.7417647!4d83.3245967!16s%2Fg%2F11fwhctm7z" },
                                 { icon: MapPin, title: "Bangalore Branch", info: "Industrial Suburb, Yeswanthapur, Bengaluru Urban", sub: "Karnataka 560022", href: "https://www.google.com/maps/search/Hindustan+Elements+Yeswanthapur" },
-                                { icon: Phone, title: "Contact Numbers", info: "+91 9995552252", sub: "Mon-Sat 9AM - 7PM", href: "tel:+919995552252" },
-                                { icon: MessageCircle, title: "WhatsApp / Support", info: "+91 9995552252", sub: "Primary: V Gupta", href: "https://wa.me/919995552252" },
-                                { icon: Mail, title: "Write to Us", info: "skceramics999@gmail.com", sub: "We response within 24 hours", href: "mailto:skceramics@gmail.com" },
+                                { icon: Phone, title: "Contact Numbers", info: "+91 9496664445", sub: "Mon-Sat 9AM - 7PM", href: "tel:+919496664445" },
+                                { icon: MessageCircle, title: "WhatsApp / Support", info: "+91 9496664445", sub: "Primary: V Gupta", href: "https://wa.me/919496664445" },
+                                { icon: Mail, title: "Write to Us", info: "hindustanelements98@gmail.com", sub: "We response within 24 hours", href: "mailto:hindustanelements98@gmail.com" },
                             ].map((item, index) => (
                                 <StaggerItem key={`${item.title}-${index}`}>
                                     <a href={item.href} target={item.href.startsWith('http') ? "_blank" : undefined} rel={item.href.startsWith('http') ? "noopener noreferrer" : undefined} className="flex items-start gap-4 p-5 bg-white rounded-2xl shadow-sm border card-hover group">
