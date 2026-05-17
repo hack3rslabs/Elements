@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   try {
     const integrations = await prisma.integration.findMany();
     const data: Record<string, unknown> = {};
-    integrations.forEach(i => {
+    integrations.forEach((i: any) => {
       data[i.platform] = {
         enabled: i.enabled,
         status: i.status,

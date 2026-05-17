@@ -56,26 +56,26 @@ export async function GET(request: NextRequest) {
 
     // Process Orders by Status
     const ordersByStatus: Record<string, number> = {};
-    orders.forEach(o => {
+    orders.forEach((o: any) => {
       ordersByStatus[o.status.toLowerCase()] = (ordersByStatus[o.status.toLowerCase()] || 0) + 1;
     });
 
     // Process Leads by Source
     const leadsBySource: Record<string, number> = {};
-    leads.forEach(l => {
+    leads.forEach((l: any) => {
       const src = (l.source || 'manual').toLowerCase();
       leadsBySource[src] = (leadsBySource[src] || 0) + 1;
     });
 
     // Process Leads by Status
     const leadsByStatus: Record<string, number> = {};
-    leads.forEach(l => {
+    leads.forEach((l: any) => {
       leadsByStatus[l.status.toLowerCase()] = (leadsByStatus[l.status.toLowerCase()] || 0) + 1;
     });
 
     // Category Distribution
     const categoryDistribution: Record<string, number> = {};
-    categories.forEach(c => {
+    categories.forEach((c: any) => {
       categoryDistribution[c.name] = c._count.products;
     });
 

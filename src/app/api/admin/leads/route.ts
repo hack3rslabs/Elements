@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Match the frontend's expected "Lead" interface
-    const formatted = leads.map(l => {
+    const formatted = leads.map((l: any) => {
       const notes = (l.notes as unknown as LeadNote[]) || [];
       return {
         ...l,

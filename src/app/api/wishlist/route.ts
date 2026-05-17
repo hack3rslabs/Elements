@@ -55,7 +55,7 @@ export async function GET(req: Request) {
 
         return NextResponse.json({
             success: true,
-            data: wishlist.items.map(item => item.product)
+            data: wishlist.items.map((item: any) => item.product)
         });
     } catch (e: unknown) {
         return NextResponse.json({ success: false, message: (e as Error).message }, { status: 500 });

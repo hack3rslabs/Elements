@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
 
     let tags: string[] = [];
     if (Array.isArray(body.tags)) {
-      tags = (body.tags as unknown[]).map((t) => String(t).trim()).filter(Boolean);
+      tags = (body.tags as unknown[]).map((t: any) => String(t).trim()).filter(Boolean);
     } else if (typeof body.tags === 'string' && body.tags.trim()) {
       tags = body.tags.split(',').map((t: string) => t.trim()).filter(Boolean);
     }

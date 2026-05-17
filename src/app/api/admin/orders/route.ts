@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Format for frontend
-    const formatted = orders.map(o => ({
+    const formatted = orders.map((o: any) => ({
       id: o.id,
       customerName: o.user?.name || 'Guest',
       email: o.user?.email || '',
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       status: o.status,
       total: Number(o.total),
       createdAt: o.createdAt.toISOString(),
-      items: o.items.map(i => ({
+      items: o.items.map((i: any) => ({
         name: i.name || i.product?.name || 'Product',
         quantity: i.quantity,
         price: Number(i.price),
