@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { prisma } from '@/lib/prisma';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: NextRequest) {
@@ -10,6 +9,10 @@ export async function POST(request: NextRequest) {
   
   if (apiKey !== ADMIN_API_KEY && apiKey !== 'elements-admin-key-2026') {
     return NextResponse.json({ success: false, message: 'Admin access required' }, { status: 403 });
+  }
+
+  if (!prisma) {
+    return NextResponse.json({ success: false, message: 'Database connection error' }, { status: 500 });
   }
 
   try {
@@ -23,21 +26,22 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const uploadDir = join(process.cwd(), 'public', 'uploads');
-    
-    // Ensure directory exists
-    try {
-      await mkdir(uploadDir, { recursive: true });
-    } catch { /* directory may already exist */ }
-
     const originalName = file.name;
-    const extension = originalName.split('.').pop();
+    const extension = originalName.split('.').pop() || 'jpg';
     const filename = `${uuidv4()}.${extension}`;
-    const path = join(uploadDir, filename);
+    const mimeType = file.type || 'image/jpeg';
 
-    await writeFile(path, buffer);
+    const uploaded = await prisma.uploadedFile.create({
+      data: {
+        filename,
+        originalName,
+        mimeType,
+        data: buffer,
+        size: file.size
+      }
+    });
     
-    const url = `/uploads/${filename}`;
+    const url = `/api/uploads/${filename}`;
 
     return NextResponse.json({
       success: true,
@@ -46,7 +50,7 @@ export async function POST(request: NextRequest) {
         url,
         filename,
         originalName,
-        size: file.size
+        size: uploaded.size
       }
     });
   } catch (error: unknown) {
@@ -54,4 +58,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, message: 'Upload failed', error: (error as Error).message }, { status: 500 });
   }
 }
+
 

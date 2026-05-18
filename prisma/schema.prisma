@@ -348,3 +348,14 @@ model VerificationOTP {
   expiresAt  DateTime
   createdAt  DateTime @default(now())
 }
+
+model UploadedFile {
+  id           String   @id @default(cuid())
+  filename     String   @unique
+  originalName String
+  mimeType     String
+  data         Bytes
+  size         Int
+  createdAt    DateTime @default(now())
+}
+
