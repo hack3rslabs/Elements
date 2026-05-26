@@ -36,15 +36,13 @@ export async function POST(request: NextRequest) {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-        // 4. Save OTP to Database
-        await prisma.verificationOTP.upsert({
-            where: { identifier: email },
-            update: {
-                otp,
-                expiresAt,
-                createdAt: new Date()
-            },
-            create: {
+        // 4. Delete old OTP (if any) and Save New OTP to Database
+        await prisma.verificationOTP.deleteMany({
+            where: { identifier: email }
+        });
+
+        await prisma.verificationOTP.create({
+            data: {
                 identifier: email,
                 otp,
                 expiresAt

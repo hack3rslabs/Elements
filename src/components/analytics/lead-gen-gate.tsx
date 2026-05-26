@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { User, Mail, Phone, Lock, Sparkles, X, ChevronRight } from "lucide-react";
+import { User, Mail, Phone, Lock, Sparkles, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function LeadGenGate() {
     const [isVisible, setIsVisible] = useState(false);
-    const [showClose, setShowClose] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [loading, setLoading] = useState(false);
     const [form, setForm] = useState({ name: "", email: "", phone: "" });
@@ -25,10 +24,6 @@ export function LeadGenGate() {
             setIsVisible(true);
             // Lock body scroll
             document.body.style.overflow = "hidden";
-
-            // Show close button after additional 5 seconds
-            setTimeout(() => setShowClose(true), 5000);
-
         }, 10000);
 
         return () => {
@@ -36,11 +31,6 @@ export function LeadGenGate() {
             document.body.style.overflow = "auto";
         };
     }, []);
-
-    const handleClose = () => {
-        setIsVisible(false);
-        document.body.style.overflow = "auto";
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -113,15 +103,6 @@ export function LeadGenGate() {
 
                     {/* Form Side */}
                     <div className="md:col-span-3 p-8 md:p-10 relative">
-                        {showClose && (
-                            <button
-                                onClick={handleClose}
-                                aria-label="Close"
-                                className="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        )}
                         <div className="mb-8">
                             <h3 className="text-xl font-bold text-gray-900">Get Started</h3>
                             <p className="text-gray-500 text-sm mt-1">Please provide your details to continue browsing.</p>

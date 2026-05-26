@@ -65,11 +65,12 @@ export async function POST(req: Request) {
                 paymentMethod: String(paymentMethod || "ONLINE"),
                 transportChoice: String(transportChoice || "standard"),
                 items: {
-                    create: (items || []).map((item: { productId: string; quantity: number; product?: { price: number; name: string } }) => ({
+                    create: (items || []).map((item: { productId: string; quantity: number; color?: string; product?: { price: number; name: string } }) => ({
                         productId: String(item.productId),
                         quantity: Number(item.quantity) || 1,
                         price: new Prisma.Decimal(item.product?.price || 0),
-                        name: String(item.product?.name || "Product")
+                        name: String(item.product?.name || "Product"),
+                        color: item.color ? String(item.color) : null
                     }))
                 }
             }

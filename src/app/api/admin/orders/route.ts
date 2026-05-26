@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
         name: i.name || i.product?.name || 'Product',
         quantity: i.quantity,
         price: Number(i.price),
+        color: i.color || null,
       })),
       paymentMethod: 'Prepaid', // Default for now
       paymentStatus: 'PAID',

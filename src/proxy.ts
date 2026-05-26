@@ -34,7 +34,7 @@ export async function proxy(request: NextRequest) {
         }
 
         // Authenticated but not authorized role — redirect to denied
-        if (token.role !== "ADMIN" && token.role !== "STAFF") {
+        if (token.role !== "ADMIN" && token.role !== "STAFF" && token.role !== "SUB_ADMIN") {
             const deniedUrl = new URL("/login", request.url);
             deniedUrl.searchParams.set("error", "AccessDenied");
             return NextResponse.redirect(deniedUrl);

@@ -5,7 +5,7 @@ import { Package, Truck, CheckCircle2, Clock, Search as SearchIcon, XCircle, Ref
 const API = "";
 const HDRS = { "Content-Type": "application/json", "x-api-key": "elements-admin-key-2026" };
 
-interface OrderItem { name?: string; productId?: string; quantity: number; price: number; }
+interface OrderItem { name?: string; productId?: string; color?: string | null; quantity: number; price: number; }
 interface OrderCustomer { name: string; email: string; phone: string; address: string; pincode: string; city?: string; state?: string; }
 interface Order {
     id: string; items: OrderItem[]; total: number; subtotal?: number; shipping?: number;
@@ -93,7 +93,12 @@ export default function OrdersTab() {
                                 <h4 className="text-xs font-bold mb-2">Items</h4>
                                 {(viewOrder.items || []).map((item, i) => (
                                     <div key={i} className="flex items-center justify-between text-xs py-1.5 border-b last:border-0">
-                                        <span>{item.name || item.productId} × {item.quantity}</span>
+                                        <div className="flex flex-col">
+                                            <span className="font-medium">{item.name || item.productId} × {item.quantity}</span>
+                                            {item.color && (
+                                                <span className="text-[10px] text-[#1877F2] font-semibold mt-0.5">Finish: {item.color}</span>
+                                            )}
+                                        </div>
                                         <span className="font-medium">₹{(item.price * item.quantity).toLocaleString()}</span>
                                     </div>
                                 ))}
@@ -172,7 +177,7 @@ export default function OrdersTab() {
                                         {order.paymentMethod && <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full capitalize">{order.paymentMethod}</span>}
                                     </div>
                                     <p className="text-sm mt-0.5">{getCustomerName(order)}</p>
-                                    <p className="text-xs text-gray-500 mt-0.5 truncate">{(order.items || []).map(i => `${i.name || i.productId} ×${i.quantity}`).join(", ")}</p>
+                                    <p className="text-xs text-gray-500 mt-0.5 truncate">{(order.items || []).map(i => `${i.name || i.productId}${i.color ? ` (${i.color})` : ''} ×${i.quantity}`).join(", ")}</p>
                                     <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-400 flex-wrap">
                                         {getAddress(order) && <span>📍 {getAddress(order)}</span>}
                                         <span>📅 {new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>

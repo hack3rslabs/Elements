@@ -110,6 +110,7 @@ model Product {
   stock           Int         @default(0)
   images          String[]
   specifications  Json?       // { material: "Steel", weight: "5kg" }
+  variants        Json?       // [ { color: "Rose Gold", price: 6500, mrp: 7500, stock: 10, images: [...] } ]
   
   // SEO Fields
   metaTitle       String?
@@ -189,6 +190,7 @@ model OrderItem {
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
   name      String?
+  color     String  @default("") // Selected color variant
   quantity  Int
   price     Decimal @db.Decimal(10, 2)
 }
@@ -311,11 +313,12 @@ model CartItem {
   cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
   productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  color     String   @default("") // Selected color variant
   quantity  Int      @default(1)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([cartId, productId])
+  @@unique([cartId, productId, color])
 }
 
 model Wishlist {

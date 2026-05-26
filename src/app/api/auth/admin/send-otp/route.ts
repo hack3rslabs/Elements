@@ -36,20 +36,27 @@ export async function POST(request: NextRequest) {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
-        // 4. Save to Database
-        await prisma.verificationOTP.upsert({
-            where: { identifier: email },
-            update: {
-                otp,
-                expiresAt,
-                createdAt: new Date()
-            },
-            create: {
+        console.log(`\n=== [AUTH DEBUG] GENERATING OTP FOR ADMIN ===`);
+        console.log(`[AUTH DEBUG] Target Email:     "${email}"`);
+        console.log(`[AUTH DEBUG] Generated OTP:    "${otp}"`);
+        console.log(`[AUTH DEBUG] Expiry Timestamp: ${expiresAt}`);
+
+        // 4. Delete old OTP (if any) and Save New OTP to Database
+        console.log(`[AUTH DEBUG] Deleting old OTP records for identifier "${email}"...`);
+        const deleteCount = await prisma.verificationOTP.deleteMany({
+            where: { identifier: email }
+        });
+        console.log(`[AUTH DEBUG] Deleted ${deleteCount.count} old record(s).`);
+
+        console.log(`[AUTH DEBUG] Writing new OTP record to database...`);
+        const createdRecord = await prisma.verificationOTP.create({
+            data: {
                 identifier: email,
                 otp,
                 expiresAt
             }
         });
+        console.log(`[AUTH DEBUG] Successfully wrote OTP record: ID="${createdRecord.id}", identifier="${createdRecord.identifier}", otp="${createdRecord.otp}", expiresAt=${createdRecord.expiresAt}`);
 
         // 5. Send Email via SMTP
         const transporter = nodemailer.createTransport({

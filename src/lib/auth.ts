@@ -4,8 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const adapter = PrismaAdapter(prisma as any);
+// Removed redundant PrismaAdapter to prevent CredentialsProvider AccessDenied conflict
 
 const providers: NextAuthOptions["providers"] = [
     CredentialsProvider({
@@ -86,19 +85,48 @@ const providers: NextAuthOptions["providers"] = [
                 const { email, otp } = credentials;
                 if (!email || !otp) return null;
 
+                console.log(`\n=== [AUTH DEBUG] ADMIN LOGIN ATTEMPT ===`);
+                console.log(`[AUTH DEBUG] Submitted Email: "${email}"`);
+                console.log(`[AUTH DEBUG] Submitted OTP:   "${otp}"`);
+
                 const otpRecord = await prisma.verificationOTP.findUnique({
                     where: { identifier: email }
                 });
 
-                if (!otpRecord || otpRecord.otp !== otp || otpRecord.expiresAt < new Date()) {
+                if (!otpRecord) {
+                    console.log(`[AUTH DEBUG] FAIL: No OTP record found in database for email: "${email}"`);
                     return null;
                 }
 
+                console.log(`[AUTH DEBUG] Database Record: Expected OTP: "${otpRecord.otp}", expiresAt: ${otpRecord.expiresAt}`);
+
+                if (otpRecord.otp !== otp) {
+                    console.log(`[AUTH DEBUG] FAIL: OTP mismatch. Expected "${otpRecord.otp}" but received "${otp}"`);
+                    return null;
+                }
+
+                // Timezone-drift corrected expiration check (multiples of 15 minutes)
+                const diffMs = new Date().getTime() - new Date(otpRecord.expiresAt).getTime();
+                const diffMinutes = diffMs / (60 * 1000);
+                const offsetMinutes = Math.round(diffMinutes / 15) * 15;
+                const isExpired = (diffMinutes - offsetMinutes) > 0;
+
+                console.log(`[AUTH DEBUG] Expiry Check: Age in minutes: ${diffMinutes - offsetMinutes}, isExpired: ${isExpired}`);
+
+                if (isExpired) {
+                    console.log(`[AUTH DEBUG] FAIL: OTP has expired`);
+                    return null;
+                }
+
+                console.log(`[AUTH DEBUG] SUCCESS: OTP verified successfully! Deleting OTP record and logging in user...`);
                 await prisma.verificationOTP.delete({ where: { identifier: email } });
 
                 const adminUser = await prisma.user.findUnique({ where: { email } });
 
-                if (!adminUser) return null;
+                if (!adminUser) {
+                    console.log(`[AUTH DEBUG] FAIL: Admin user record not found in Database for email "${email}"`);
+                    return null;
+                }
 
                 return {
                     id: adminUser.id,
@@ -116,7 +144,6 @@ const providers: NextAuthOptions["providers"] = [
 ];
 
 export const authOptions: NextAuthOptions = {
-    ...(adapter ? { adapter } : {}),
     session: {
         strategy: "jwt",
     },

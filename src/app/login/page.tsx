@@ -191,18 +191,40 @@ export default function LoginPage() {
         e.preventDefault();
         setLoading(true);
         setError("");
-        const res = await signIn("credentials", {
-            email,
-            otp,
-            type: "admin",
-            redirect: false,
-        });
 
-        if (res?.error) {
-            setError("Invalid or expired OTP");
+        try {
+            // 1. Direct validation check for highly detailed UI error messages
+            const verifyRes = await fetch("/api/auth/admin/verify-otp", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, otp }),
+            });
+            const verifyData = await verifyRes.json();
+
+            if (!verifyData.success) {
+                setError(verifyData.message || "Invalid or expired OTP");
+                setLoading(false);
+                return;
+            }
+
+            // 2. Proceed with actual NextAuth session creation
+            const res = await signIn("credentials", {
+                email,
+                otp,
+                type: "admin",
+                redirect: false,
+            });
+
+            if (res?.error) {
+                setError("Failed to start session: " + res.error);
+                setLoading(false);
+            } else if (res?.ok) {
+                await handlePostLogin();
+            }
+        } catch (err) {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            setError("Validation service error: " + errorMsg);
             setLoading(false);
-        } else if (res?.ok) {
-            await handlePostLogin();
         }
     };
 
@@ -440,10 +462,13 @@ export default function LoginPage() {
                                                     required
                                                     autoFocus
                                                     type="text"
-                                                    maxLength={6}
+                                                    maxLength={12}
                                                     placeholder="000000"
                                                     value={fpOtp}
-                                                    onChange={e => setFpOtp(e.target.value.replace(/\D/g, ''))}
+                                                    onChange={e => {
+                                                        const cleaned = e.target.value.replace(/\D/g, '');
+                                                        setFpOtp(cleaned.slice(0, 6));
+                                                    }}
                                                     className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-4 text-center text-2xl font-black tracking-[0.5em] outline-none focus:ring-4 focus:ring-[#1877F2]/10 focus:border-[#1877F2] transition-all"
                                                 />
                                             </div>
@@ -560,10 +585,13 @@ export default function LoginPage() {
                                                     required
                                                     autoFocus
                                                     type="text"
-                                                    maxLength={6}
+                                                    maxLength={12}
                                                     placeholder="000000"
                                                     value={otp}
-                                                    onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
+                                                    onChange={e => {
+                                                        const cleaned = e.target.value.replace(/\D/g, '');
+                                                        setOtp(cleaned.slice(0, 6));
+                                                    }}
                                                     className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-5 text-center text-3xl font-black tracking-[0.6em] outline-none focus:ring-4 focus:ring-[#1e293b]/10 focus:border-[#1e293b] transition-all placeholder:text-gray-200"
                                                 />
                                             </div>

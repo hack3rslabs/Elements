@@ -62,120 +62,129 @@ export default function CartPage() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            {/* Cart Items */}
-                            <div className="lg:col-span-2 space-y-4">
-                                {cart.items.map((item) => (
-                                    <div
-                                        key={item.productId}
-                                        className="flex gap-4 md:gap-6 bg-white rounded-2xl p-4 md:p-6 shadow-sm border hover:shadow-md transition-all"
-                                    >
-                                        {/* Image */}
-                                        <Link
-                                            href={`/product/${item.product.slug}`}
-                                            className="w-24 h-24 md:w-32 md:h-32 relative shrink-0 rounded-xl overflow-hidden bg-gray-100"
-                                        >
-                                            <Image
-                                                src={
-                                                    item.product.images?.[0] ||
-                                                    "/images/products/kicjen sunk 1.webp"
-                                                }
-                                                alt={item.product.name}
-                                                fill
-                                                className="object-cover"
-                                            />
-                                        </Link>
+                            {/* Cart Items */}                             <div className="lg:col-span-2 space-y-4">
+                                 {cart.items.map((item) => {
+                                     const itemKey = item.id || `${item.productId}-${item.color || "default"}`;
+                                     return (
+                                         <div
+                                             key={itemKey}
+                                             className="flex gap-4 md:gap-6 bg-white rounded-2xl p-4 md:p-6 shadow-sm border hover:shadow-md transition-all"
+                                         >
+                                             {/* Image */}
+                                             <Link
+                                                 href={`/product/${item.product.slug}`}
+                                                 className="w-24 h-24 md:w-32 md:h-32 relative shrink-0 rounded-xl overflow-hidden bg-gray-100"
+                                             >
+                                                 <Image
+                                                     src={
+                                                         item.product.images?.[0] ||
+                                                         "/images/products/kicjen sunk 1.webp"
+                                                     }
+                                                     alt={item.product.name}
+                                                     fill
+                                                     className="object-cover"
+                                                 />
+                                             </Link>
 
-                                        <div className="flex-1 flex flex-col justify-between">
-                                            {/* Title + Price */}
-                                            <div>
-                                                <Link
-                                                    href={`/product/${item.product.slug}`}
-                                                    className="font-semibold text-base hover:text-[#1877F2] line-clamp-2"
-                                                >
-                                                    {item.product.name}
-                                                </Link>
+                                             <div className="flex-1 flex flex-col justify-between">
+                                                 {/* Title + Price */}
+                                                 <div>
+                                                     <Link
+                                                         href={`/product/${item.product.slug}`}
+                                                         className="font-semibold text-base hover:text-[#1877F2] line-clamp-2"
+                                                     >
+                                                         {item.product.name}
+                                                     </Link>
+                                                     {item.color && (
+                                                         <span className="inline-flex items-center gap-1.5 mt-1.5 text-xs font-semibold text-[#1877F2] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
+                                                             Finish: {item.color}
+                                                         </span>
+                                                     )}
 
-                                                <div className="flex items-center gap-3 mt-2">
-                                                    <span className="text-lg font-bold">
-                                                        ₹{item.product.price.toLocaleString("en-IN")}
-                                                    </span>
-                                                    <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">
-                                                        + {getGSTPercentage(item.product)}% GST
-                                                    </span>
+                                                     <div className="flex items-center gap-3 mt-2">
+                                                         <span className="text-lg font-bold">
+                                                             ₹{item.product.price.toLocaleString("en-IN")}
+                                                         </span>
+                                                         <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">
+                                                             + {getGSTPercentage(item.product)}% GST
+                                                         </span>
 
-                                                    {item.product.mrp > item.product.price && (
-                                                        <span className="text-sm text-muted-foreground line-through">
-                                                            ₹{item.product.mrp.toLocaleString("en-IN")}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
+                                                         {item.product.mrp > item.product.price && (
+                                                             <span className="text-sm text-muted-foreground line-through">
+                                                                 ₹{item.product.mrp.toLocaleString("en-IN")}
+                                                             </span>
+                                                         )}
+                                                     </div>
+                                                 </div>
 
-                                            {/* Controls */}
-                                            <div className="flex items-center justify-between mt-4">
-                                                {/* Quantity Controls */}
-                                                <div className="flex items-center border rounded-full overflow-hidden">
-                                                    {/* Decrease */}
-                                                    <button
-                                                        onClick={() => {
-                                                            if (item.quantity === 1) {
-                                                                removeFromCart(item.productId);
-                                                            } else {
-                                                                updateCartQuantity(
-                                                                    item.productId,
-                                                                    item.quantity - 1
-                                                                );
-                                                            }
-                                                        }}
-                                                        className="h-9 w-9 flex items-center justify-center hover:bg-gray-100"
-                                                    >
-                                                        <Minus className="h-3 w-3" />
-                                                    </button>
+                                                 {/* Controls */}
+                                                 <div className="flex items-center justify-between mt-4">
+                                                     {/* Quantity Controls */}
+                                                     <div className="flex items-center border rounded-full overflow-hidden">
+                                                         {/* Decrease */}
+                                                         <button
+                                                             onClick={() => {
+                                                                 if (item.quantity === 1) {
+                                                                     removeFromCart(item.productId, item.color);
+                                                                 } else {
+                                                                     updateCartQuantity(
+                                                                         item.productId,
+                                                                         item.quantity - 1,
+                                                                         item.color
+                                                                     );
+                                                                 }
+                                                             }}
+                                                             className="h-9 w-9 flex items-center justify-center hover:bg-gray-100"
+                                                         >
+                                                             <Minus className="h-3 w-3" />
+                                                         </button>
 
-                                                    {/* Quantity */}
-                                                    <span className="w-10 text-center font-semibold text-sm">
-                                                        {item.quantity}
-                                                    </span>
+                                                         {/* Quantity */}
+                                                         <span className="w-10 text-center font-semibold text-sm">
+                                                             {item.quantity}
+                                                         </span>
 
-                                                    {/* Increase */}
-                                                    <button
-                                                        onClick={() => {
-                                                            if (item.quantity < MAX_QTY) {
-                                                                updateCartQuantity(
-                                                                    item.productId,
-                                                                    item.quantity + 1
-                                                                );
-                                                            }
-                                                        }}
-                                                        className="h-9 w-9 flex items-center justify-center hover:bg-gray-100"
-                                                    >
-                                                        <Plus className="h-3 w-3" />
-                                                    </button>
-                                                </div>
+                                                         {/* Increase */}
+                                                         <button
+                                                             onClick={() => {
+                                                                 if (item.quantity < MAX_QTY) {
+                                                                     updateCartQuantity(
+                                                                         item.productId,
+                                                                         item.quantity + 1,
+                                                                         item.color
+                                                                     );
+                                                                 }
+                                                             }}
+                                                             className="h-9 w-9 flex items-center justify-center hover:bg-gray-100"
+                                                         >
+                                                             <Plus className="h-3 w-3" />
+                                                         </button>
+                                                     </div>
 
-                                                {/* Price + Remove */}
-                                                <div className="flex items-center gap-4">
-                                                    <span className="text-lg font-bold text-[#1877F2]">
-                                                        ₹
-                                                        {(item.product.price * item.quantity).toLocaleString(
-                                                            "en-IN"
-                                                        )}
-                                                    </span>
+                                                     {/* Price + Remove */}
+                                                     <div className="flex items-center gap-4">
+                                                         <span className="text-lg font-bold text-[#1877F2]">
+                                                             ₹
+                                                             {(item.product.price * item.quantity).toLocaleString(
+                                                                 "en-IN"
+                                                             )}
+                                                         </span>
 
-                                                    <button
-                                                        onClick={() =>
-                                                            removeFromCart(item.productId)
-                                                        }
-                                                        className="h-9 w-9 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                                                         <button
+                                                             onClick={() =>
+                                                                 removeFromCart(item.productId, item.color)
+                                                             }
+                                                             className="h-9 w-9 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full"
+                                                         >
+                                                             <Trash2 className="h-4 w-4" />
+                                                         </button>
+                                                     </div>
+                                                 </div>
+                                             </div>
+                                         </div>
+                                     );
+                                 })}
+                             </div>
 
                             {/* Order Summary */}
                             <div className="lg:col-span-1">

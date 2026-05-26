@@ -23,8 +23,8 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
-    const formatted = customers.map((c: any) => {
-      const totalSpend = c.orders.reduce((sum: number, o: any) => sum + Number(o.total), 0);
+    const formatted = customers.map((c) => {
+      const totalSpend = c.orders.reduce((sum: number, o) => sum + Number(o.total), 0);
       return {
         id: c.id,
         name: c.name || 'Guest',

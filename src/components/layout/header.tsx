@@ -203,7 +203,7 @@ export function Header() {
                         {status === "authenticated" ? (
                             <div className="flex items-center gap-2">
                                 <Link 
-                                    href={session?.user?.role === "ADMIN" || session?.user?.role === "STAFF" ? "/admin" : "/profile"}
+                                    href={session?.user?.role === "ADMIN" || session?.user?.role === "STAFF" || session?.user?.role === "SUB_ADMIN" ? "/admin" : "/profile"}
                                     title="Account"
                                     className="flex items-center justify-center h-10 w-10 rounded-md hover:bg-accent hover:text-[#1877F2] transition-colors"
                                 >
@@ -264,7 +264,7 @@ export function Header() {
                                             </div>
                                             <Button variant="ghost" size="sm" onClick={() => signOut({ callbackUrl: "/" })} className="text-xs font-bold text-red-500">Logout</Button>
                                         </div>
-                                        <Link href={session?.user?.role === "ADMIN" || session?.user?.role === "STAFF" ? "/admin" : "/profile"} onClick={() => setMobileOpen(false)}>
+                                        <Link href={session?.user?.role === "ADMIN" || session?.user?.role === "STAFF" || session?.user?.role === "SUB_ADMIN" ? "/admin" : "/profile"} onClick={() => setMobileOpen(false)}>
                                             <Button className="w-full bg-[#1877F2] hover:bg-[#0d47a1]">Go to Dashboard</Button>
                                         </Link>
                                     </>

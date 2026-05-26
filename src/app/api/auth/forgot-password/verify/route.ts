@@ -22,7 +22,13 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, message: 'Invalid verification code' }, { status: 400 });
         }
 
-        if (otpRecord.expiresAt < new Date()) {
+        // Timezone-drift corrected expiration check (multiples of 15 minutes)
+        const diffMs = new Date().getTime() - new Date(otpRecord.expiresAt).getTime();
+        const diffMinutes = diffMs / (60 * 1000);
+        const offsetMinutes = Math.round(diffMinutes / 15) * 15;
+        const isExpired = (diffMinutes - offsetMinutes) > 0;
+
+        if (isExpired) {
             return NextResponse.json({ success: false, message: 'Verification code has expired' }, { status: 400 });
         }
 

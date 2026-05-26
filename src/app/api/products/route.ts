@@ -176,6 +176,7 @@ export async function POST(request: NextRequest) {
         stock: body.stock !== undefined ? safeNumber(body.stock) : undefined,
         images,
         specifications: body.specifications && typeof body.specifications === 'object' ? body.specifications : undefined,
+        variants: body.variants && Array.isArray(body.variants) ? body.variants : undefined,
         metaTitle: body.metaTitle ? String(body.metaTitle) : undefined,
         metaDescription: body.metaDescription ? String(body.metaDescription) : undefined,
         metaKeywords: metaKeywords ? String(metaKeywords) : undefined,

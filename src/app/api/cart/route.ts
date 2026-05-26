@@ -16,10 +16,15 @@ async function getCart(userId: string | null, sessionId: string) {
                     data: { userId, sessionId: null },
                     include: { items: { include: { product: { include: { category: { include: { parent: true } } } } } } }
                 });
-            } else {
                 for (const item of sessionCart.items) {
                     const existingItem = await prisma.cartItem.findUnique({
-                        where: { cartId_productId: { cartId: userCart.id, productId: item.productId } }
+                        where: {
+                            cartId_productId_color: {
+                                cartId: userCart.id,
+                                productId: item.productId,
+                                color: item.color
+                            }
+                        }
                     });
                     if (existingItem) {
                         await prisma.cartItem.update({
@@ -28,7 +33,12 @@ async function getCart(userId: string | null, sessionId: string) {
                         });
                     } else {
                         await prisma.cartItem.create({
-                            data: { cartId: userCart.id, productId: item.productId, quantity: item.quantity }
+                            data: {
+                                cartId: userCart.id,
+                                productId: item.productId,
+                                color: item.color,
+                                quantity: item.quantity
+                            }
                         });
                     }
                 }
@@ -127,7 +137,7 @@ export async function POST(req: Request) {
         const sessionId = req.headers.get("x-session-id") || 'default_session';
         const userId = session?.user?.id || null;
         
-        const { productId, quantity = 1 } = await req.json();
+        const { productId, quantity = 1, color = "" } = await req.json();
 
         if (!prisma) return NextResponse.json({ success: false, message: "DB not available" }, { status: 503 });
 
@@ -144,7 +154,13 @@ export async function POST(req: Request) {
         }
 
         const existingItem = await prisma.cartItem.findUnique({
-            where: { cartId_productId: { cartId: cart.id, productId } }
+            where: {
+                cartId_productId_color: {
+                    cartId: cart.id,
+                    productId,
+                    color: color ? String(color) : ""
+                }
+            }
         });
 
         if (existingItem) {
@@ -154,7 +170,12 @@ export async function POST(req: Request) {
             });
         } else {
             await prisma.cartItem.create({
-                data: { cartId: cart.id, productId, quantity }
+                data: {
+                    cartId: cart.id,
+                    productId,
+                    color: color ? String(color) : "",
+                    quantity
+                }
             });
         }
 

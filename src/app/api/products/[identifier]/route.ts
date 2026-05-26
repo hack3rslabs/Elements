@@ -108,6 +108,7 @@ export async function PUT(
     }
     if (body.images !== undefined) data.images = Array.isArray(body.images) ? body.images.filter(Boolean) : [];
     if (body.specifications !== undefined && typeof body.specifications === 'object') data.specifications = body.specifications;
+    if (body.variants !== undefined) data.variants = Array.isArray(body.variants) ? body.variants : [];
     if (body.metaTitle !== undefined) data.metaTitle = body.metaTitle ? String(body.metaTitle) : null;
     if (body.metaDescription !== undefined) data.metaDescription = body.metaDescription ? String(body.metaDescription) : null;
 

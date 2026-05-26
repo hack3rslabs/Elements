@@ -16,17 +16,49 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Elements - Premium Home Décor & Construction | Hindustan Elements",
-  description: "Elements (Hindustan Elements) - Your trusted partner for premium kitchen sinks, flooring, elevation panels, and designer tiles. Quality products for modern homes.",
-  keywords: "kitchen sinks, floor guard, tiles, elevation panels, mitti magic, home decor, construction materials, builder supplies",
+  title: {
+    default: "Elements - Premium Home Décor & Construction | Hindustan Elements",
+    template: "%s | Elements by Hindustan",
+  },
+
+  description:
+    "Shop premium kitchen sinks, tiles, flooring, elevation panels, and construction materials at Elements by Hindustan.",
+
+  keywords: [
+    "kitchen sinks",
+    "elevation panels",
+    "home decor",
+    "construction materials",
+    "builder supplies",
+    "Elements Hindustan",
+    "Terracota products",
+    "clay jali",
+    "Artificial grass",
+    "Aluimium tankcovers",
+    "Manhole covers",
+    "Tile Adhesive",
+    "Clips & Spacers"
+  ],
+
   openGraph: {
     title: "Elements - Premium Home Décor & Construction",
-    description: "Shop premium kitchen sinks, flooring, elevation, and tiles at Elements by Hindustan.",
+    description:
+      "Premium quality home décor and construction materials for modern homes.",
     type: "website",
-    siteName: "Elements by Hindustan",
+    siteName: "Hindustan Elements",
+    url: "https://hindustanelements.com/",
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "Elements by Hindustan",
+    description: "Premium home décor & construction materials",
+  },
+
+  alternates: {
+    canonical: "https://hindustanelements.com/"
   },
 };
-
 export default function RootLayout({
   children,
 }: {

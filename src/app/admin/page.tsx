@@ -18,6 +18,7 @@ import IntegrationsTab from "./components/IntegrationsTab";
 import ReportsTab from "./components/ReportsTab";
 import CRMTab from "./components/CRMTab";
 import PaymentsTab from "./components/PaymentsTab";
+
 import StaffTab from "./components/StaffTab";
 import AdminsTab from "./components/AdminsTab";
 import CustomersTab from "./components/CustomersTab";
@@ -28,11 +29,20 @@ import { CATEGORIES } from "@/constants/categories";
 const API = "";
 const HEADERS = { "Content-Type": "application/json", "x-api-key": "elements-admin-key-2026" };
 
+interface AdminProductVariant {
+    color: string;
+    price: string | number;
+    mrp: string | number;
+    stock: string | number;
+    images?: string[];
+}
+
 interface Product {
     id: string; name: string; slug: string; price: number; mrp: number;
     stockStatus: string; stock: number; categoryName: string; images: string[];
     rating: number; reviewCount: number; isBestSeller: boolean; isNewArrival: boolean;
     sku: string; metaTitle: string; metaDescription: string; tags: string[];
+    variants?: AdminProductVariant[];
 }
 interface Task { id: string; title: string; status: 'todo' | 'progress' | 'done'; priority: 'low' | 'medium' | 'high'; assignee: string; due: string; }
 interface Banner { id: string; title: string; image: string; link: string; position: string; active: boolean; }
@@ -65,8 +75,8 @@ const NAV_ITEMS = [
     { icon: Megaphone, label: "Campaigns", key: "campaigns" },
     { icon: BarChart3, label: "Reports", key: "reports" },
     { icon: Link2, label: "Integrations", key: "integrations" },
-   // { icon: Users, label: "Staff & Roles", key: "staff" },
-    { icon: Shield, label: "Admins", key: "admins" },
+    { icon: Users, label: "Staff & Roles", key: "staff" },
+   // { icon: Shield, label: "Admins", key: "admins" },
     { icon: Users, label: "Customers", key: "customers" },
     { icon: Globe, label: "SEO", key: "seo" },
     { icon: Settings, label: "Settings", key: "settings" },
@@ -90,6 +100,7 @@ export default function AdminPage() {
     const [showProductForm, setShowProductForm] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [productForm, setProductForm] = useState({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' });
+    const [variants, setVariants] = useState<AdminProductVariant[]>([]);
     const [productSearch, setProductSearch] = useState('');
     const [showTaskForm, setShowTaskForm] = useState(false);
     const [taskForm, setTaskForm] = useState({ title: '', priority: 'medium' as Task['priority'], assignee: '', due: '' });
@@ -219,33 +230,101 @@ export default function AdminPage() {
         try {
             const res = await fetch(`${API}/api/products`, {
                 method: 'POST', headers: HEADERS,
-                body: JSON.stringify({ name: productForm.name, price: Number(productForm.price), mrp: Number(productForm.mrp), categoryName: productForm.category, stock: Number(productForm.stock), description: productForm.description, sku: productForm.sku, metaTitle: productForm.metaTitle, metaDescription: productForm.metaDescription, tags: productForm.tags.split(',').map(t => t.trim()).filter(Boolean), images: productForm.images.split(',').map(i => i.trim()).filter(Boolean) }),
+                body: JSON.stringify({
+                    name: productForm.name,
+                    price: Number(productForm.price),
+                    mrp: Number(productForm.mrp),
+                    categoryName: productForm.category,
+                    stock: Number(productForm.stock),
+                    description: productForm.description,
+                    sku: productForm.sku,
+                    metaTitle: productForm.metaTitle,
+                    metaDescription: productForm.metaDescription,
+                    tags: productForm.tags.split(',').map(t => t.trim()).filter(Boolean),
+                    images: productForm.images.split(',').map(i => i.trim()).filter(Boolean),
+                    variants: variants
+                        .filter(v => v.color && v.color.trim())
+                        .map(v => ({
+                            color: v.color.trim(),
+                            price: Number(v.price || productForm.price || 0),
+                            mrp: Number(v.mrp || productForm.mrp || 0),
+                            stock: Number(v.stock || productForm.stock || 0),
+                            images: v.images
+                        }))
+                }),
             });
             const data = await res.json();
-            if (data.success && data.data) { setProducts(prev => [data.data as Product, ...prev]); showToast('Product added!'); }
-        } catch { showToast('Saved locally'); }
-        setShowProductForm(false);
-        setProductForm({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' });
+            if (res.ok && data.success && data.data) {
+                setProducts(prev => [data.data as Product, ...prev]);
+                showToast('Product added successfully!');
+                setShowProductForm(false);
+                setVariants([]);
+                setProductForm({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' });
+            } else {
+                showToast(`Error: ${data.message || 'Failed to save product'}`);
+            }
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            showToast(`Save failed: ${msg}`);
+        }
     };
 
     const startEditProduct = (p: Product) => {
         setEditingProduct(p);
         setProductForm({ name: p.name, price: p.price.toString(), mrp: p.mrp.toString(), category: p.categoryName, stock: p.stock.toString(), description: '', sku: p.sku, metaTitle: p.metaTitle || '', metaDescription: p.metaDescription || '', tags: (p.tags || []).join(', '), images: (p.images || []).join(', ') });
+        setVariants(Array.isArray(p.variants) ? p.variants.map((v) => ({
+            color: v.color || '',
+            price: (v.price || '').toString(),
+            mrp: (v.mrp || '').toString(),
+            stock: (v.stock || '').toString(),
+            images: Array.isArray(v.images) ? v.images : []
+        })) : []);
         setShowProductForm(true);
     };
 
     const handleUpdateProduct = async () => {
         if (!editingProduct) return;
+        const variantsPayload = variants
+            .filter(v => v.color && v.color.trim())
+            .map(v => ({
+                color: v.color.trim(),
+                price: Number(v.price || productForm.price || 0),
+                mrp: Number(v.mrp || productForm.mrp || 0),
+                stock: Number(v.stock || productForm.stock || 0),
+                images: v.images
+            }));
         try {
-            await fetch(`${API}/api/products/${editingProduct.id}`, {
+            const res = await fetch(`${API}/api/products/${editingProduct.id}`, {
                 method: 'PUT', headers: HEADERS,
-                body: JSON.stringify({ name: productForm.name, price: Number(productForm.price), mrp: Number(productForm.mrp), categoryName: productForm.category, stock: Number(productForm.stock), sku: productForm.sku, metaTitle: productForm.metaTitle, metaDescription: productForm.metaDescription, tags: productForm.tags.split(',').map(t => t.trim()).filter(Boolean), images: productForm.images.split(',').map(i => i.trim()).filter(Boolean) }),
+                body: JSON.stringify({
+                    name: productForm.name,
+                    price: Number(productForm.price),
+                    mrp: Number(productForm.mrp),
+                    categoryName: productForm.category,
+                    stock: Number(productForm.stock),
+                    sku: productForm.sku,
+                    metaTitle: productForm.metaTitle,
+                    metaDescription: productForm.metaDescription,
+                    tags: productForm.tags.split(',').map(t => t.trim()).filter(Boolean),
+                    images: productForm.images.split(',').map(i => i.trim()).filter(Boolean),
+                    variants: variantsPayload
+                }),
             });
-            showToast('Product updated!');
-        } catch { showToast('Updated locally'); }
-        setProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...p, name: productForm.name, price: Number(productForm.price), mrp: Number(productForm.mrp), categoryName: productForm.category, stock: Number(productForm.stock), sku: productForm.sku, metaTitle: productForm.metaTitle, metaDescription: productForm.metaDescription, tags: productForm.tags.split(',').map(t => t.trim()).filter(Boolean), images: productForm.images.split(',').map(i => i.trim()).filter(Boolean) } : p));
-        setEditingProduct(null); setShowProductForm(false);
-        setProductForm({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' });
+            const data = await res.json();
+            if (res.ok && data.success && data.data) {
+                setProducts(prev => prev.map(p => p.id === editingProduct.id ? (data.data as Product) : p));
+                showToast('Product updated successfully!');
+                setEditingProduct(null);
+                setShowProductForm(false);
+                setVariants([]);
+                setProductForm({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' });
+            } else {
+                showToast(`Error: ${data.message || 'Failed to update product'}`);
+            }
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            showToast(`Update failed: ${msg}`);
+        }
     };
 
     const handleDeleteProduct = async (id: string) => {
@@ -276,7 +355,7 @@ export default function AdminPage() {
         return <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-[#1877F2] mb-4" /><p className="text-sm text-gray-500">Redirecting...</p></div>;
     }
 
-    if (userRole !== "ADMIN" && userRole !== "STAFF") {
+    if (userRole !== "ADMIN" && userRole !== "STAFF" && userRole !== "SUB_ADMIN") {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
                 <div className="bg-white rounded-3xl shadow-2xl border p-10 text-center max-w-md">
@@ -485,7 +564,7 @@ export default function AdminPage() {
                                     <p className="text-sm text-gray-400">{products.length} products</p>
                                     <div className="relative"><SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" /><input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Search..." className="h-8 pl-8 pr-3 rounded-lg border text-xs w-40 focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" /></div>
                                 </div>
-                                <button onClick={() => { setEditingProduct(null); setProductForm({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' }); setShowProductForm(true); }} className="inline-flex items-center gap-2 bg-[#1877F2] text-white rounded-full px-4 py-2 text-sm font-medium hover:bg-[#0d47a1] shadow-md"><Plus className="h-4 w-4" /> Add Product</button>
+                                <button onClick={() => { setEditingProduct(null); setProductForm({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' }); setVariants([{ color: '', price: '', mrp: '', stock: '10', images: [] }]); setShowProductForm(true); }} className="inline-flex items-center gap-2 bg-[#1877F2] text-white rounded-full px-4 py-2 text-sm font-medium hover:bg-[#0d47a1] shadow-md"><Plus className="h-4 w-4" /> Add Product</button>
                             </div>
                             {showProductForm && (
                                 <div className="bg-white rounded-2xl border shadow-sm p-6">
@@ -557,31 +636,123 @@ export default function AdminPage() {
                                         </div>
                                         <div><label className="text-xs font-medium text-gray-500 block mb-1">Stock</label><input type="number" value={productForm.stock} onChange={e => setProductForm(p => ({ ...p, stock: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="50" /></div>
                                         <div className="md:col-span-2"><label className="text-xs font-medium text-gray-500 block mb-1">Description</label><textarea value={productForm.description} onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))} rows={2} className="w-full rounded-xl border px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="Product description..." /></div>
-                                        <div className="md:col-span-2 space-y-4">
-                                            <label className="text-sm font-semibold text-gray-700">Product Gallery (Max 4 Images)</label>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                                {[0, 1, 2, 3].map((index) => {
-                                                    const imagesArr = productForm.images.split(',').map(s => s.trim()).filter(Boolean);
-                                                    return (
-                                                        <ImageUploader
-                                                            key={index}
-                                                            label={`Image ${index + 1}`}
-                                                            value={imagesArr[index] || ''}
-                                                            onChange={(url) => {
-                                                                const newArr = [...imagesArr];
-                                                                // If url is empty (cleared), remove it or set to empty
-                                                                if (!url) {
-                                                                    newArr.splice(index, 1);
-                                                                } else {
-                                                                    newArr[index] = url;
-                                                                }
-                                                                setProductForm(p => ({ ...p, images: newArr.filter(Boolean).join(', ') }));
-                                                            }}
-                                                            placeholder={`Image URL ${index + 1}`}
-                                                        />
-                                                    );
-                                                })}
+                                        
+                                        {/* Color Variants (Method 1: Color Map) */}
+                                        <div className="md:col-span-2 border-t pt-6 mt-2 space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <h4 className="text-sm font-bold text-gray-700">Product Color Variants</h4>
+                                                    <p className="text-xs text-gray-400 mt-0.5">Add color variants, each with its own price, stock, and images (Method 1: Color Map)</p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setVariants(prev => [...prev, { color: '', price: productForm.price || '0', mrp: productForm.mrp || '0', stock: productForm.stock || '10', images: [] }])}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-orange-600 rounded-full hover:bg-orange-700 shadow-sm transition-all"
+                                                >
+                                                    <Plus className="h-3.5 w-3.5" /> Add Color Variant
+                                                </button>
                                             </div>
+
+                                            {variants.length > 0 && (
+                                                <div className="space-y-4">
+                                                    {variants.map((v, vIndex) => (
+                                                        <div key={vIndex} className="bg-gray-50 p-4 rounded-2xl border border-gray-200 relative space-y-4">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setVariants(prev => prev.filter((_, idx) => idx !== vIndex))}
+                                                                className="absolute top-4 right-4 text-red-500 hover:text-red-700 transition-colors"
+                                                                title="Remove color variant"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </button>
+
+                                                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 pr-8">
+                                                                <div>
+                                                                    <label className="text-xs font-medium text-gray-500 block mb-1">Color Name *</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={v.color}
+                                                                        onChange={e => {
+                                                                            const newVariants = [...variants];
+                                                                            newVariants[vIndex].color = e.target.value;
+                                                                            setVariants(newVariants);
+                                                                        }}
+                                                                        placeholder="e.g. Chrome, Rose Gold"
+                                                                        className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-orange-300 outline-none"
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-xs font-medium text-gray-500 block mb-1">Price (₹) *</label>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={v.price}
+                                                                        onChange={e => {
+                                                                            const newVariants = [...variants];
+                                                                            newVariants[vIndex].price = e.target.value;
+                                                                            setVariants(newVariants);
+                                                                        }}
+                                                                        placeholder="e.g. 5999"
+                                                                        className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-orange-300 outline-none"
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-xs font-medium text-gray-500 block mb-1">MRP (₹) *</label>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={v.mrp}
+                                                                        onChange={e => {
+                                                                            const newVariants = [...variants];
+                                                                            newVariants[vIndex].mrp = e.target.value;
+                                                                            setVariants(newVariants);
+                                                                        }}
+                                                                        placeholder="e.g. 8999"
+                                                                        className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-orange-300 outline-none"
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    {/* <label className="text-xs font-medium text-gray-500 block mb-1">Stock *</label>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={v.stock}
+                                                                        onChange={e => {
+                                                                            const newVariants = [...variants];
+                                                                            newVariants[vIndex].stock = e.target.value;
+                                                                            setVariants(newVariants);
+                                                                        }}
+                                                                        placeholder="e.g. 10"
+                                                                        className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-orange-300 outline-none"
+                                                                    /> */}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="space-y-2">
+                                                                <label className="text-xs font-semibold text-gray-600">Variant Gallery (Up to 3 Images)</label>
+                                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                                    {/* {[0, 1, 2].map((imgIdx) => (
+                                                                        // <ImageUploader
+                                                                        //     key={imgIdx}
+                                                                        //     label={`Variant Image ${imgIdx + 1}`}
+                                                                        //     value={v.images[imgIdx] || ''}
+                                                                        //     onChange={(url) => {
+                                                                        //         const newVariants = [...variants];
+                                                                        //         const newImages = [...v.images];
+                                                                        //         if (!url) {
+                                                                        //             newImages.splice(imgIdx, 1);
+                                                                        //         } else {
+                                                                        //             newImages[imgIdx] = url;
+                                                                        //         }
+                                                                        //         newVariants[vIndex].images = newImages.filter(Boolean);
+                                                                        //         setVariants(newVariants);
+                                                                        //     }}
+                                                                        //     placeholder={`Variant Image URL ${imgIdx + 1}`}
+                                                                        // />
+                                                                    ))} */}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div><label className="text-xs font-medium text-gray-500 block mb-1">SEO Title</label><input value={productForm.metaTitle} onChange={e => setProductForm(p => ({ ...p, metaTitle: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="SEO title" /></div>

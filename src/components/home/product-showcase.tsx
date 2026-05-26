@@ -93,44 +93,48 @@ function ProductCard({ product, onAddToCart, onToggleWishlist, isWishlisted }: {
 
   return (
     <div className="group relative flex flex-col h-full overflow-hidden rounded-2xl border bg-white shadow-sm hover:shadow-2xl hover:scale-[1.03] active:scale-[0.97] transition-all duration-500">
+      {/* Invisible link covering the whole card */}
+      <Link href={`/product/${product.slug}`} className="absolute inset-0 z-10" aria-label={`View ${product.name}`} />
+
       <div className="aspect-square relative shrink-0 overflow-hidden bg-gray-50">
+        
         <Image src={imageUrl} alt={product.name} fill className="object-cover transition-transform duration-700 group-hover:scale-110" />
         {discount > 0 && (
-          <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] md:text-xs font-bold px-2 py-0.5 md:px-2.5 md:py-1 rounded-full shadow-md">
+          <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] md:text-xs font-bold px-2 py-0.5 md:px-2.5 md:py-1 rounded-full shadow-md z-20">
             {discount}% OFF
           </span>
         )}
         {product.isBestSeller && (
-          <span className="absolute top-2 right-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] md:text-xs font-bold px-2 py-0.5 rounded-full shadow-md">
+          <span className="absolute top-2 right-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] md:text-xs font-bold px-2 py-0.5 rounded-full shadow-md z-20">
             ⭐ BEST
           </span>
         )}
         {product.isNewArrival && !product.isBestSeller && (
-          <span className="absolute top-2 right-2 bg-gradient-to-r from-[#1877F2] to-blue-600 text-white text-[9px] md:text-xs font-bold px-2 py-0.5 rounded-full shadow-md">
+          <span className="absolute top-2 right-2 bg-gradient-to-r from-[#1877F2] to-blue-600 text-white text-[9px] md:text-xs font-bold px-2 py-0.5 rounded-full shadow-md z-20">
             NEW
           </span>
         )}
         {/* Quick actions overlay */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
-          <Link href={`/product/${product.slug}`} className="bg-white rounded-full px-4 py-2 text-xs font-semibold shadow-lg hover:bg-gray-100 transition-colors flex items-center gap-1">
+        {/* <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none z-20">
+          <div className="bg-white rounded-full px-4 py-2 text-xs font-semibold shadow-lg transition-colors flex items-center gap-1">
             <Eye className="h-3 w-3" /> View Details
-          </Link>
-        </div>
+          </div>
+        </div> */}
         {/* Wishlist button */}
         <button
           onClick={(e) => { e.preventDefault(); onToggleWishlist(); }}
           aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-          className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-white/90 flex items-center justify-center shadow-md hover:scale-110 transition-transform z-10"
+          className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-white/90 flex items-center justify-center shadow-md hover:scale-110 transition-transform z-20 cursor-pointer"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={`h-4 w-4 ${isWishlisted ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} stroke="currentColor" strokeWidth="2" fill={isWishlisted ? "currentColor" : "none"}>
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
           </svg>
         </button>
       </div>
-      <div className="p-3 md:p-4 flex-1 flex flex-col">
+      <div className="p-3 md:p-4 flex-1 flex flex-col relative z-20 pointer-events-none">
         <p className="text-[10px] md:text-xs text-[#1877F2] font-medium uppercase tracking-wider mb-0.5">{product.categoryName}</p>
         <h3 className="font-medium text-xs md:text-sm leading-tight mb-1.5">
-          <Link href={`/product/${product.slug}`} className="hover:text-[#1877F2] transition-colors">{product.name}</Link>
+          <span className="hover:text-[#1877F2] transition-colors">{product.name}</span>
         </h3>
         
         <div className="mt-auto">
@@ -142,14 +146,14 @@ function ProductCard({ product, onAddToCart, onToggleWishlist, isWishlisted }: {
             </div>
           ) : <div className="mb-1.5 min-h-[16px]" />}
           
-          <div className="flex items-center justify-between mt-2">
+          <div className="flex items-center justify-between mt-2 pointer-events-auto">
             <div>
               <span className="text-sm md:text-lg font-bold text-[#1C1C1E]">₹{product.price.toLocaleString("en-IN")}</span>
               {product.mrp > product.price && (
                 <span className="text-[10px] md:text-xs text-muted-foreground line-through ml-1">₹{product.mrp.toLocaleString("en-IN")}</span>
               )}
             </div>
-            <Button size="sm" onClick={(e) => { e.preventDefault(); onAddToCart(); }} className="bg-[#1877F2] hover:bg-[#0d47a1] rounded-full h-7 md:h-9 px-2.5 md:px-4 text-[10px] md:text-xs font-semibold shadow-md">
+            <Button size="sm" onClick={(e) => { e.preventDefault(); onAddToCart(); }} className="bg-[#1877F2] hover:bg-[#0d47a1] rounded-full h-7 md:h-9 px-2.5 md:px-4 text-[10px] md:text-xs font-semibold shadow-md cursor-pointer">
               <ShoppingCart className="h-3 w-3 mr-1" /> Add
             </Button>
           </div>
@@ -158,7 +162,7 @@ function ProductCard({ product, onAddToCart, onToggleWishlist, isWishlisted }: {
             href={`https://wa.me/919496664445?text=${encodeURIComponent(`Hi! I need details about: ${product.name}`)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 flex items-center justify-center gap-1.5 text-[10px] md:text-xs text-green-700 bg-green-50 rounded-full py-1.5 font-medium hover:bg-green-100 transition-colors"
+            className="mt-2 flex items-center justify-center gap-1.5 text-[10px] md:text-xs text-green-700 bg-green-50 rounded-full py-1.5 font-medium hover:bg-green-100 transition-colors pointer-events-auto cursor-pointer"
           >
             <MessageCircle className="h-3 w-3" /> WhatsApp for Details
           </a>

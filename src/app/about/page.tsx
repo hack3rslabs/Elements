@@ -197,7 +197,7 @@ export default function AboutPage() {
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
                                 <ScrollReveal direction="left">
                                     <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl img-hover-zoom">
-                                        <Image src="/images/products/miti mag 2.webp" alt="Mitti Magic" fill className="object-cover" />
+                                        <Image src="/images/products/Tp.png" alt="Mitti Magic" fill className="object-cover" />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-8">
                                             <div className="text-white">
                                                 <p className="text-sm font-medium opacity-80">03 / Artistry</p>

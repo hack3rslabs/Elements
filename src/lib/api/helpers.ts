@@ -163,6 +163,7 @@ export interface BaseProduct {
         } | null;
     } | null;
     reviews?: BaseReview[];
+    variants?: unknown;
     createdAt: Date | string;
     updatedAt: Date | string;
 }
@@ -176,15 +177,51 @@ import { getGSTPercentage } from "@/lib/utils";
 // Re-exporting from shared utils
 export { getGSTPercentage };
 
+export interface ProductVariant {
+    color?: string;
+    price?: number | string;
+    mrp?: number | string;
+    stock?: number | string;
+    images?: string[];
+}
+
 export function toProductDTO(product: BaseProduct) {
-    const images = Array.isArray(product.images) ? (product.images as string[]).filter(Boolean) : [];
-    const image = images[0] || DEFAULT_PRODUCT_IMAGE;
     const categoryName = product.category?.name || '';
     const parentCategory = product.category?.parent?.name || product.category?.name || '';
     const { rating, reviewCount } = computeRatingStats(product.reviews || []);
     const specs = normalizeSpecifications(product.specifications);
     const tags = parseTagsFromKeywords(product.metaKeywords || null);
     const derivedTags = tags.length > 0 ? tags : [specs.material, specs.finish, categoryName, parentCategory].filter(Boolean);
+
+    const variants = (() => {
+        const raw = product.variants;
+        if (!raw) return [];
+        if (Array.isArray(raw)) return raw as ProductVariant[];
+        if (typeof raw === 'string') {
+            try {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) return parsed as ProductVariant[];
+                if (typeof parsed === 'string') {
+                    const doubleParsed = JSON.parse(parsed);
+                    if (Array.isArray(doubleParsed)) return doubleParsed as ProductVariant[];
+                }
+            } catch (e) {
+                console.error("Failed to parse variants JSON:", e);
+            }
+        }
+        return [];
+    })();
+
+    let images = Array.isArray(product.images) ? (product.images as string[]).filter(Boolean) : [];
+    if (images.length === 0 && variants.length > 0) {
+        const firstVariantWithImages = variants.find((v) => Array.isArray(v.images) && v.images.filter(Boolean).length > 0);
+        if (firstVariantWithImages) {
+            images = (firstVariantWithImages.images || []).filter(Boolean);
+        } else {
+            images = variants.flatMap((v) => Array.isArray(v.images) ? (v.images || []) : []).filter(Boolean);
+        }
+    }
+    const image = images[0] || DEFAULT_PRODUCT_IMAGE;
 
     return {
         id: product.id,
@@ -200,6 +237,7 @@ export function toProductDTO(product: BaseProduct) {
         images,
         image,
         specifications: specs,
+        variants,
         metaTitle: product.metaTitle || '',
         metaDescription: product.metaDescription || '',
         categoryId: product.categoryId,

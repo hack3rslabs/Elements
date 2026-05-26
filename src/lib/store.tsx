@@ -3,7 +3,9 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect, useMemo, useRef } from 'react';
 
 interface CartItem {
+    id?: string;
     productId: string;
+    color?: string | null;
     quantity: number;
     product: {
         id: string;
@@ -52,9 +54,9 @@ interface StoreContextType {
     cartLoading: boolean;
     isInitialized: boolean;
     refreshCart: () => Promise<void>;
-    addToCart: (productId: string, quantity?: number) => Promise<void>;
-    updateCartQuantity: (productId: string, quantity: number) => Promise<void>;
-    removeFromCart: (productId: string) => Promise<void>;
+    addToCart: (productId: string, quantity?: number, color?: string | null) => Promise<void>;
+    updateCartQuantity: (productId: string, quantity: number, color?: string | null) => Promise<void>;
+    removeFromCart: (productId: string, color?: string | null) => Promise<void>;
     toggleWishlist: (productId: string) => Promise<void>;
     isInWishlist: (productId: string) => boolean;
     toast: { message: string; type: 'success' | 'error' } | null;
@@ -132,12 +134,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         } catch (e) { console.error("Refresh Wishlist Error", e); }
     }, [apiCall]);
 
-    const addToCartFn = useCallback(async (productId: string, quantity: number = 1) => {
+    const addToCartFn = useCallback(async (productId: string, quantity: number = 1, color?: string | null) => {
         setCartLoading(true);
         try {
             const data = await apiCall('/cart', {
                 method: 'POST',
-                body: JSON.stringify({ productId, quantity })
+                body: JSON.stringify({ productId, quantity, color })
             });
             if (data.success) {
                 await refreshCart();
@@ -150,20 +152,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
     }, [apiCall, refreshCart, showToast]);
 
-    const updateCartQuantity = useCallback(async (productId: string, quantity: number) => {
+    const updateCartQuantity = useCallback(async (productId: string, quantity: number, color?: string | null) => {
         if (quantity < 1) return;
         try {
             const data = await apiCall(`/cart/${productId}`, {
                 method: 'PUT',
-                body: JSON.stringify({ quantity })
+                body: JSON.stringify({ quantity, color })
             });
             if (data.success) await refreshCart();
         } catch (e) { console.error("Update Qty Error", e); }
     }, [apiCall, refreshCart]);
 
-    const removeFromCartFn = useCallback(async (productId: string) => {
+    const removeFromCartFn = useCallback(async (productId: string, color?: string | null) => {
         try {
-            const data = await apiCall(`/cart/${productId}`, {
+            const url = color ? `/cart/${productId}?color=${encodeURIComponent(color)}` : `/cart/${productId}`;
+            const data = await apiCall(url, {
                 method: 'DELETE'
             });
             if (data.success) {

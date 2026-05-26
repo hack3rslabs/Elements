@@ -111,7 +111,7 @@ export const CATEGORIES: Category[] = [
   {
     name: "MASON HOUSE", image: "/images/products/mason-house.png", slug: "tile-adhesive-epoxy", desc: "Designer printed & vitrified tiles",
     subCategories: [
-      { name: "TILE ADHESIVE", slug: "tile-adhesive", image: "/images/products/tp.webp" },
+      { name: "TILE ADHESIVE", slug: "tile-adhesive", image: "/images/products/Adhesive.png" },
       { name: "TILE EPOXY", slug: "tile-epoxy", image: "/images/products/Epoxy.png" },
       { name: "TILING TOOLS", slug: "tile-tools", image: "/images/products/TILE LEVELING TOOLS.png" },
     ]

@@ -502,28 +502,34 @@ export default function CheckoutPage() {
                                 <div className="bg-white rounded-2xl p-6 shadow-sm border sticky top-24">
                                     <h3 className="text-lg font-bold border-b pb-4 mb-4">Order Summary</h3>
                                     <div className="space-y-4 mb-6 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
-                                        {cart.items.map(item => (
-                                            <div key={item.productId} className="flex gap-3">
-                                                <div className="w-12 h-12 relative rounded-lg overflow-hidden shrink-0 border bg-gray-50">
-                                                    <Image 
-                                                        src={item.product.image || item.product.images?.[0] || '/images/products/kicjen sunk 1.webp'} 
-                                                        alt={item.product.name} 
-                                                        fill 
-                                                        className="object-cover" 
-                                                    />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-xs font-medium line-clamp-1">{item.product.name}</p>
-                                                    <div className="flex items-center gap-2 mt-0.5">
-                                                        <p className="text-[10px] text-muted-foreground">Qty: {item.quantity}</p>
-                                                        <span className="text-[8px] bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded-full border">
-                                                            {getGSTPercentage(item.product)}% GST
-                                                        </span>
+                                        {cart.items.map(item => {
+                                            const itemKey = item.id || `${item.productId}-${item.color || "default"}`;
+                                            return (
+                                                <div key={itemKey} className="flex gap-3">
+                                                    <div className="w-12 h-12 relative rounded-lg overflow-hidden shrink-0 border bg-gray-50">
+                                                        <Image 
+                                                            src={item.product.image || item.product.images?.[0] || '/images/products/kicjen sunk 1.webp'} 
+                                                            alt={item.product.name} 
+                                                            fill 
+                                                            className="object-cover" 
+                                                        />
                                                     </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-xs font-medium line-clamp-1">{item.product.name}</p>
+                                                        {item.color && (
+                                                            <p className="text-[10px] text-[#1877F2] font-semibold">Finish: {item.color}</p>
+                                                        )}
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            <p className="text-[10px] text-muted-foreground">Qty: {item.quantity}</p>
+                                                            <span className="text-[8px] bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded-full border">
+                                                                {getGSTPercentage(item.product)}% GST
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-xs font-bold">₹{(item.product.price * item.quantity).toLocaleString("en-IN")}</p>
                                                 </div>
-                                                <p className="text-xs font-bold">₹{(item.product.price * item.quantity).toLocaleString("en-IN")}</p>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
 
                                     <div className="space-y-2 border-t pt-4">
