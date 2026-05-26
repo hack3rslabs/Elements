@@ -710,7 +710,7 @@ export default function AdminPage() {
                                                                     />
                                                                 </div>
                                                                 <div>
-                                                                    {/* <label className="text-xs font-medium text-gray-500 block mb-1">Stock *</label>
+                                                                    <label className="text-xs font-medium text-gray-500 block mb-1">Stock *</label>
                                                                     <input
                                                                         type="number"
                                                                         value={v.stock}
@@ -721,32 +721,36 @@ export default function AdminPage() {
                                                                         }}
                                                                         placeholder="e.g. 10"
                                                                         className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-orange-300 outline-none"
-                                                                    /> */}
+                                                                    />
                                                                 </div>
                                                             </div>
 
                                                             <div className="space-y-2">
                                                                 <label className="text-xs font-semibold text-gray-600">Variant Gallery (Up to 3 Images)</label>
                                                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                                    {/* {[0, 1, 2].map((imgIdx) => (
-                                                                        // <ImageUploader
-                                                                        //     key={imgIdx}
-                                                                        //     label={`Variant Image ${imgIdx + 1}`}
-                                                                        //     value={v.images[imgIdx] || ''}
-                                                                        //     onChange={(url) => {
-                                                                        //         const newVariants = [...variants];
-                                                                        //         const newImages = [...v.images];
-                                                                        //         if (!url) {
-                                                                        //             newImages.splice(imgIdx, 1);
-                                                                        //         } else {
-                                                                        //             newImages[imgIdx] = url;
-                                                                        //         }
-                                                                        //         newVariants[vIndex].images = newImages.filter(Boolean);
-                                                                        //         setVariants(newVariants);
-                                                                        //     }}
-                                                                        //     placeholder={`Variant Image URL ${imgIdx + 1}`}
-                                                                        // />
-                                                                    ))} */}
+                                                                    {[0, 1, 2].map((imgIdx) => (
+                                                                        <ImageUploader
+                                                                            key={imgIdx}
+                                                                            label={`Variant Image ${imgIdx + 1}`}
+                                                                            value={v.images?.[imgIdx] || ''}
+                                                              onChange={(url) => {
+                                                const newVariants = [...variants];
+
+                                           const newImages = [...(v.images || [])];
+
+                                          if (!url) {
+                                            newImages.splice(imgIdx, 1);
+                                            } else {
+                                        newImages[imgIdx] = url;
+                                          }
+
+                                         newVariants[vIndex].images = newImages.filter(Boolean);
+
+                                        setVariants(newVariants);
+                                            }}
+                                                                            placeholder={`Variant Image URL ${imgIdx + 1}`}
+                                                                        />
+                                                                    ))}
                                                                 </div>
                                                             </div>
                                                         </div>
