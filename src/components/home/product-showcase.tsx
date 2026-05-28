@@ -3,9 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Star, ShoppingCart, Eye, MessageCircle } from "lucide-react";
+import { Star, ShoppingCart, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
+import { useMemo, useState } from "react";
 
 interface Product {
   id: string;
@@ -32,6 +33,25 @@ const fadeUp = {
 
 export function ProductShowcase({ products }: { products: Product[] }) {
   const { addToCart, toggleWishlist, isInWishlist } = useStore();
+  const [showAll, setShowAll] = useState(false);
+  const [shuffledProducts, setShuffledProducts] = useState<Product[]>([]);
+
+  const featuredProducts = useMemo(() => {
+    const seen = new Set<string>();
+    return products.filter((product) => {
+      const groupKey = `${product.parentCategory || "root"}-${product.categoryName || product.slug}`.toLowerCase();
+      if (seen.has(groupKey)) return false;
+      seen.add(groupKey);
+      return true;
+    });
+  }, [products]);
+
+  const showAllProducts = () => {
+    setShuffledProducts([...products].sort(() => Math.random() - 0.5));
+    setShowAll(true);
+  };
+
+  const visibleProducts = showAll ? shuffledProducts : featuredProducts;
 
   return (
     <section className="py-4 md:py-4 bg-gray">
@@ -57,7 +77,7 @@ export function ProductShowcase({ products }: { products: Product[] }) {
           </div>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 items-stretch">
-            {products.map((product, i) => (
+            {visibleProducts.map((product, i) => (
               <motion.div
                 key={product.id}
                 className="h-full"
@@ -75,6 +95,17 @@ export function ProductShowcase({ products }: { products: Product[] }) {
                 />
               </motion.div>
             ))}
+          </div>
+        )}
+
+        {!showAll && products.length > featuredProducts.length && (
+          <div className="mt-8 flex justify-center">
+            <Button
+              onClick={showAllProducts}
+              className="rounded-full bg-[#1877F2] px-8 py-6 text-sm font-semibold shadow-lg hover:bg-[#0d47a1]"
+            >
+              View More Products
+            </Button>
           </div>
         )}
       </div>

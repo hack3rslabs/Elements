@@ -7,7 +7,9 @@ import {
   toStringArray, 
   parseBooleanFlag,
   resolveCategoryId,
-  generateUniqueSlug
+  generateUniqueSlug,
+  getCategoryAndDescendantIds,
+  ensureCategoryHierarchy
 } from '@/lib/api/helpers';
 
 export async function GET(request: NextRequest) {
@@ -33,12 +35,21 @@ export async function GET(request: NextRequest) {
   const where: Record<string, unknown> = {};
 
   if (category) {
-    where.category = {
-      OR: [
-        { slug: String(category) },
-        { parent: { slug: String(category) } }
-      ]
-    };
+    let categoryRecord = await prisma.category.findUnique({
+      where: { slug: String(category) },
+      select: { id: true },
+    });
+
+    if (!categoryRecord) {
+      const categoryId = await ensureCategoryHierarchy({ categoryName: String(category) });
+      categoryRecord = categoryId ? { id: categoryId } : null;
+    }
+
+    if (categoryRecord) {
+      where.categoryId = { in: await getCategoryAndDescendantIds(categoryRecord.id) };
+    } else {
+      where.category = { slug: String(category) };
+    }
   }
 
   if (search) {
@@ -149,6 +160,9 @@ export async function POST(request: NextRequest) {
     const categoryId = await resolveCategoryId({
       categoryId: body.categoryId,
       categoryName: body.categoryName || body.category,
+      category: body.category,
+      subCategory: body.subCategory,
+      model: body.model,
     });
 
     const slug = await generateUniqueSlug(body.slug || body.name);
@@ -156,7 +170,7 @@ export async function POST(request: NextRequest) {
 
     let tags: string[] = [];
     if (Array.isArray(body.tags)) {
-      tags = (body.tags as unknown[]).map((t: any) => String(t).trim()).filter(Boolean);
+      tags = (body.tags as unknown[]).map((t) => String(t).trim()).filter(Boolean);
     } else if (typeof body.tags === 'string' && body.tags.trim()) {
       tags = body.tags.split(',').map((t: string) => t.trim()).filter(Boolean);
     }

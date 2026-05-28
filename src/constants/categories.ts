@@ -50,7 +50,7 @@ export const CATEGORIES: Category[] = [
     slug: "artificial-grass",
     desc: "Artificial Grass & Panels for Modern Living",
     subCategories: [
-      { name: "Charcol Panels", slug: "charcol-panels", image: "/images/products/ag.webp" },
+      { name: "Charcol Panels", slug: "charcol-panels", image: "/images/products/charcol.png" },
       { name: "Soffit Panels", slug: "soft-panels", image: "/images/products/sofit.png" },
       { name: "Green Grass", slug: "green-grass", image: "/images/products/green-grass.png" },
     ]

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { CATEGORIES, type Category } from "@/constants/categories";
 
 export const DEFAULT_PRODUCT_IMAGE = '/images/products/kicjen sunk 1.webp';
 export const NEW_ARRIVAL_DAYS = 90;
@@ -54,7 +55,172 @@ export async function generateUniqueCategorySlug(name: string): Promise<string> 
     }
 }
 
-export async function resolveCategoryId({ categoryId, categoryName }: { categoryId?: string; categoryName?: string }): Promise<string> {
+type CategoryHierarchyInput = {
+    category?: string;
+    subCategory?: string;
+    model?: string;
+    categoryName?: string;
+};
+
+function normalizeCategoryValue(value: unknown): string {
+    return String(value || '').trim().toLowerCase();
+}
+
+function matchesCategoryNode(node: Category, value: unknown): boolean {
+    const raw = normalizeCategoryValue(value);
+    if (!raw) return false;
+    const inputSlug = slugify(raw);
+    return (
+        normalizeCategoryValue(node.name) === raw ||
+        normalizeCategoryValue(node.slug) === raw ||
+        slugify(node.name) === inputSlug ||
+        slugify(node.slug) === inputSlug
+    );
+}
+
+function findCategoryPathByValue(value: unknown, nodes: Category[] = CATEGORIES, path: Category[] = []): Category[] | null {
+    for (const node of nodes) {
+        const nextPath = [...path, node];
+        if (matchesCategoryNode(node, value)) return nextPath;
+        const childPath = findCategoryPathByValue(value, node.subCategories || [], nextPath);
+        if (childPath) return childPath;
+    }
+    return null;
+}
+
+function collectCategorySlugs(node: Category): string[] {
+    return [
+        node.slug,
+        ...(node.subCategories || []).flatMap((child) => collectCategorySlugs(child)),
+    ];
+}
+
+function findCategoryPath(input: CategoryHierarchyInput): Category[] | null {
+    const top = CATEGORIES.find((node) => matchesCategoryNode(node, input.category));
+    const sub = top?.subCategories?.find((node) => matchesCategoryNode(node, input.subCategory));
+    const model = sub?.subCategories?.find((node) => matchesCategoryNode(node, input.model));
+
+    if (model && sub && top) return [top, sub, model];
+    if (sub && top) return [top, sub];
+    if (top) return [top];
+
+    return findCategoryPathByValue(input.model || input.subCategory || input.categoryName || input.category);
+}
+
+export async function ensureCategoryHierarchy(input: CategoryHierarchyInput): Promise<string | null> {
+    if (!prisma) throw new Error("Database not initialized");
+
+    const path = findCategoryPath(input);
+    if (!path) return null;
+
+    let parentId: string | null = null;
+    let currentId: string | null = null;
+
+    for (const node of path) {
+        let category = await prisma.category.findUnique({ where: { slug: node.slug } });
+        if (!category) {
+            category = await prisma.category.findFirst({
+                where: {
+                    name: node.name,
+                    OR: [{ parentId }, { parentId: null }],
+                },
+                orderBy: { createdAt: 'asc' },
+            });
+        }
+
+        const data: {
+            name: string;
+            slug: string;
+            description: string | null;
+            image: string | null;
+            parentId: string | null;
+        } = {
+            name: node.name,
+            slug: node.slug,
+            description: node.desc || null,
+            image: node.image || null,
+            parentId,
+        };
+
+        if (category) {
+            const needsUpdate: boolean =
+                category.name !== data.name ||
+                category.slug !== data.slug ||
+                category.description !== data.description ||
+                category.image !== data.image ||
+                category.parentId !== data.parentId;
+
+            category = needsUpdate
+                ? await prisma.category.update({ where: { id: category.id }, data })
+                : category;
+        } else {
+            category = await prisma.category.create({ data });
+        }
+
+        parentId = category.id;
+        currentId = category.id;
+    }
+
+    return currentId;
+}
+
+export async function getDescendantCategoryIds(categoryId: string): Promise<string[]> {
+    if (!prisma) throw new Error("Database not initialized");
+
+    const category = await prisma.category.findUnique({
+        where: { id: categoryId },
+        select: { slug: true },
+    });
+
+    const staticPath = category ? findCategoryPathByValue(category.slug) : null;
+    const staticNode = staticPath?.[staticPath.length - 1];
+    const staticSlugs = staticNode ? collectCategorySlugs(staticNode) : [];
+    const staticMatches = staticSlugs.length > 0
+        ? await prisma.category.findMany({
+            where: { slug: { in: staticSlugs } },
+            select: { id: true },
+        })
+        : [];
+
+    const ids = new Set<string>(staticMatches.map((match) => match.id));
+    ids.delete(categoryId);
+    let frontier = [categoryId, ...Array.from(ids)];
+    const visited = new Set<string>();
+
+    while (frontier.length > 0) {
+        const nextFrontier = frontier.filter((id) => !visited.has(id));
+        if (nextFrontier.length === 0) break;
+        nextFrontier.forEach((id) => visited.add(id));
+
+        const children = await prisma.category.findMany({
+            where: { parentId: { in: nextFrontier } },
+            select: { id: true },
+        });
+
+        frontier = children.map((child) => child.id);
+        frontier.forEach((id) => ids.add(id));
+    }
+
+    return Array.from(ids);
+}
+
+export async function getCategoryAndDescendantIds(categoryId: string): Promise<string[]> {
+    return [categoryId, ...(await getDescendantCategoryIds(categoryId))];
+}
+
+export async function resolveCategoryId({
+    categoryId,
+    categoryName,
+    category,
+    subCategory,
+    model,
+}: {
+    categoryId?: string;
+    categoryName?: string;
+    category?: string;
+    subCategory?: string;
+    model?: string;
+}): Promise<string> {
     if (!prisma) throw new Error("Database not initialized");
     
     if (categoryId) {
@@ -62,6 +228,14 @@ export async function resolveCategoryId({ categoryId, categoryName }: { category
         if (!cat) throw new Error('Category not found');
         return cat.id;
     }
+
+    const hierarchicalCategoryId = await ensureCategoryHierarchy({
+        category,
+        subCategory,
+        model,
+        categoryName,
+    });
+    if (hierarchicalCategoryId) return hierarchicalCategoryId;
 
     if (categoryName) {
         const name = String(categoryName).trim();
@@ -270,7 +444,7 @@ export function toReviewDTO(review: BaseReview) {
         rating: safeNumber(review.rating),
         comment: review.comment || '',
         verified: true,
-        createdAt: review.createdAt,
+        createdAt: review.createdAt instanceof Date ? review.createdAt.toISOString() : String(review.createdAt),
     };
 }
 

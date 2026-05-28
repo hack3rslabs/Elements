@@ -42,6 +42,7 @@ interface Product {
     stockStatus: string; stock: number; categoryName: string; images: string[];
     rating: number; reviewCount: number; isBestSeller: boolean; isNewArrival: boolean;
     sku: string; metaTitle: string; metaDescription: string; tags: string[];
+    description?: string; shortDescription?: string;
     variants?: AdminProductVariant[];
 }
 interface Task { id: string; title: string; status: 'todo' | 'progress' | 'done'; priority: 'low' | 'medium' | 'high'; assignee: string; due: string; }
@@ -99,7 +100,10 @@ export default function AdminPage() {
     const [settingsForm, setSettingsForm] = useState({ storeName: '', tagline: '', supportEmail: '', contactPhone: '', freeShippingAbove: '', deliveryTime: '', gstNumber: '', panNumber: '' });
     const [showProductForm, setShowProductForm] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-    const [productForm, setProductForm] = useState({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' });
+    // Hierarchical category selection
+    const [productForm, setProductForm] = useState({
+        name: '', price: '', mrp: '', category: CATEGORIES[0].name, subCategory: '', model: '', stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: ''
+    });
     const [variants, setVariants] = useState<AdminProductVariant[]>([]);
     const [productSearch, setProductSearch] = useState('');
     const [showTaskForm, setShowTaskForm] = useState(false);
@@ -227,6 +231,8 @@ export default function AdminPage() {
     }, [status, fetchData, router]);
 
     const handleAddProduct = async () => {
+        // Use the deepest selected category/model
+        let categoryName = productForm.model || productForm.subCategory || productForm.category;
         try {
             const res = await fetch(`${API}/api/products`, {
                 method: 'POST', headers: HEADERS,
@@ -234,7 +240,10 @@ export default function AdminPage() {
                     name: productForm.name,
                     price: Number(productForm.price),
                     mrp: Number(productForm.mrp),
-                    categoryName: productForm.category,
+                    categoryName,
+                    category: productForm.category,
+                    subCategory: productForm.subCategory,
+                    model: productForm.model,
                     stock: Number(productForm.stock),
                     description: productForm.description,
                     sku: productForm.sku,
@@ -259,7 +268,7 @@ export default function AdminPage() {
                 showToast('Product added successfully!');
                 setShowProductForm(false);
                 setVariants([]);
-                setProductForm({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' });
+                setProductForm({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, subCategory: '', model: '', stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' });
             } else {
                 showToast(`Error: ${data.message || 'Failed to save product'}`);
             }
@@ -271,7 +280,43 @@ export default function AdminPage() {
 
     const startEditProduct = (p: Product) => {
         setEditingProduct(p);
-        setProductForm({ name: p.name, price: p.price.toString(), mrp: p.mrp.toString(), category: p.categoryName, stock: p.stock.toString(), description: '', sku: p.sku, metaTitle: p.metaTitle || '', metaDescription: p.metaDescription || '', tags: (p.tags || []).join(', '), images: (p.images || []).join(', ') });
+        // Try to map the stored categoryName back into category / subCategory / model
+        let category = CATEGORIES[0].name;
+        let subCategory = '';
+        let model = '';
+        // If the product stores the leaf category name in categoryName, try to find it
+        for (const cat of CATEGORIES) {
+            if (cat.name === p.categoryName) {
+                category = cat.name; break;
+            }
+            for (const sc of cat.subCategories || []) {
+                if (sc.name === p.categoryName) {
+                    category = cat.name; subCategory = sc.name; break;
+                }
+                for (const m of sc.subCategories || []) {
+                    if (m.name === p.categoryName) {
+                        category = cat.name; subCategory = sc.name; model = m.name; break;
+                    }
+                }
+                if (subCategory) break;
+            }
+            if (category === p.categoryName || subCategory) break;
+        }
+        setProductForm({
+            name: p.name,
+            price: p.price.toString(),
+            mrp: p.mrp.toString(),
+            category,
+            subCategory,
+            model,
+            stock: p.stock.toString(),
+            description: p.description || p.shortDescription || '',
+            sku: p.sku,
+            metaTitle: p.metaTitle || '',
+            metaDescription: p.metaDescription || '',
+            tags: (p.tags || []).join(', '),
+            images: (p.images || []).join(', ')
+        });
         setVariants(Array.isArray(p.variants) ? p.variants.map((v) => ({
             color: v.color || '',
             price: (v.price || '').toString(),
@@ -294,20 +339,25 @@ export default function AdminPage() {
                 images: v.images
             }));
         try {
+            const categoryName = productForm.model || productForm.subCategory || productForm.category;
             const res = await fetch(`${API}/api/products/${editingProduct.id}`, {
                 method: 'PUT', headers: HEADERS,
                 body: JSON.stringify({
                     name: productForm.name,
                     price: Number(productForm.price),
                     mrp: Number(productForm.mrp),
-                    categoryName: productForm.category,
+                    categoryName,
                     stock: Number(productForm.stock),
                     sku: productForm.sku,
+                    description: productForm.description,
                     metaTitle: productForm.metaTitle,
                     metaDescription: productForm.metaDescription,
                     tags: productForm.tags.split(',').map(t => t.trim()).filter(Boolean),
                     images: productForm.images.split(',').map(i => i.trim()).filter(Boolean),
-                    variants: variantsPayload
+                    variants: variantsPayload,
+                    category: productForm.category,
+                    subCategory: productForm.subCategory,
+                    model: productForm.model
                 }),
             });
             const data = await res.json();
@@ -317,7 +367,7 @@ export default function AdminPage() {
                 setEditingProduct(null);
                 setShowProductForm(false);
                 setVariants([]);
-                setProductForm({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' });
+                setProductForm({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, subCategory: '', model: '', stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' });
             } else {
                 showToast(`Error: ${data.message || 'Failed to update product'}`);
             }
@@ -564,7 +614,7 @@ export default function AdminPage() {
                                     <p className="text-sm text-gray-400">{products.length} products</p>
                                     <div className="relative"><SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" /><input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Search..." className="h-8 pl-8 pr-3 rounded-lg border text-xs w-40 focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" /></div>
                                 </div>
-                                <button onClick={() => { setEditingProduct(null); setProductForm({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' }); setVariants([{ color: '', price: '', mrp: '', stock: '10', images: [] }]); setShowProductForm(true); }} className="inline-flex items-center gap-2 bg-[#1877F2] text-white rounded-full px-4 py-2 text-sm font-medium hover:bg-[#0d47a1] shadow-md"><Plus className="h-4 w-4" /> Add Product</button>
+                                <button onClick={() => { setEditingProduct(null); setProductForm({ name: '', price: '', mrp: '', category: CATEGORIES[0].name, subCategory: '', model: '', stock: '', description: '', sku: '', metaTitle: '', metaDescription: '', tags: '', images: '' }); setVariants([{ color: '', price: '', mrp: '', stock: '10', images: [] }]); setShowProductForm(true); }} className="inline-flex items-center gap-2 bg-[#1877F2] text-white rounded-full px-4 py-2 text-sm font-medium hover:bg-[#0d47a1] shadow-md"><Plus className="h-4 w-4" /> Add Product</button>
                             </div>
                             {showProductForm && (
                                 <div className="bg-white rounded-2xl border shadow-sm p-6">
@@ -575,18 +625,15 @@ export default function AdminPage() {
                                         <div><label className="text-xs font-medium text-gray-500 block mb-1">Price (₹) *</label><input type="number" value={productForm.price} onChange={e => setProductForm(p => ({ ...p, price: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="4999" /></div>
                                         <div><label className="text-xs font-medium text-gray-500 block mb-1">MRP (₹) *</label><input type="number" value={productForm.mrp} onChange={e => setProductForm(p => ({ ...p, mrp: e.target.value }))} className="w-full h-10 rounded-xl border px-3 text-sm focus:ring-2 focus:ring-[#1877F2]/30 focus:outline-none" placeholder="7999" /></div>
                                         <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50/50 p-4 rounded-2xl border border-dashed">
+                                            {/* Main Category */}
                                             <div>
                                                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1.5">1. Main Category</label>
-                                                <select 
-                                                    value={CATEGORIES.find(c => 
-                                                        c.name === productForm.category || 
-                                                        c.subCategories?.some(sc => sc.name === productForm.category || sc.subCategories?.some(m => m.name === productForm.category))
-                                                    )?.name || ""} 
+                                                <select
+                                                    value={productForm.category}
                                                     onChange={e => {
-                                                        const cat = CATEGORIES.find(c => c.name === e.target.value);
-                                                        setProductForm(p => ({ ...p, category: cat?.name || "" }));
-                                                    }} 
-                                                    className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500/20 outline-none" 
+                                                        setProductForm(p => ({ ...p, category: e.target.value, subCategory: '', model: '' }));
+                                                    }}
+                                                    className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500/20 outline-none"
                                                 >
                                                     <option value="">Select Category</option>
                                                     {CATEGORIES.map(cat => (
@@ -594,43 +641,34 @@ export default function AdminPage() {
                                                     ))}
                                                 </select>
                                             </div>
-                                            
+                                            {/* Subcategory */}
                                             <div>
                                                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1.5">2. Sub Category</label>
-                                                <select 
-                                                    value={CATEGORIES.find(c => c.subCategories?.some(sc => sc.name === productForm.category || sc.subCategories?.some(m => m.name === productForm.category)))
-                                                        ?.subCategories?.find(sc => sc.name === productForm.category || sc.subCategories?.some(m => m.name === productForm.category))?.name || ""} 
-                                                    onChange={e => setProductForm(p => ({ ...p, category: e.target.value }))} 
-                                                    className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500/20 outline-none disabled:opacity-50 disabled:bg-gray-100" 
-                                                    disabled={!CATEGORIES.find(c => 
-                                                        c.name === productForm.category || 
-                                                        c.subCategories?.some(sc => sc.name === productForm.category || sc.subCategories?.some(m => m.name === productForm.category))
-                                                    )?.subCategories}
+                                                <select
+                                                    value={productForm.subCategory}
+                                                    onChange={e => setProductForm(p => ({ ...p, subCategory: e.target.value, model: '' }))}
+                                                    className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500/20 outline-none"
+                                                    disabled={!CATEGORIES.find(c => c.name === productForm.category)?.subCategories}
                                                 >
                                                     <option value="">Select Sub Category</option>
-                                                    {CATEGORIES.find(c => 
-                                                        c.name === productForm.category || 
-                                                        c.subCategories?.some(sc => sc.name === productForm.category || sc.subCategories?.some(m => m.name === productForm.category))
-                                                    )?.subCategories?.map(sub => (
+                                                    {CATEGORIES.find(c => c.name === productForm.category)?.subCategories?.map(sub => (
                                                         <option key={sub.name} value={sub.name}>{sub.name}</option>
                                                     ))}
                                                 </select>
                                             </div>
-
+                                            {/* Model (if present) */}
                                             <div>
                                                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1.5">3. Model</label>
-                                                <select 
-                                                    value={productForm.category} 
-                                                    onChange={e => setProductForm(p => ({ ...p, category: e.target.value }))} 
-                                                    className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500/20 outline-none disabled:opacity-50 disabled:bg-gray-100" 
-                                                    disabled={!CATEGORIES.flatMap(c => c.subCategories || []).find(sc => sc.name === productForm.category || sc.subCategories?.some(m => m.name === productForm.category))?.subCategories}
+                                                <select
+                                                    value={productForm.model}
+                                                    onChange={e => setProductForm(p => ({ ...p, model: e.target.value }))}
+                                                    className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm bg-white shadow-sm focus:ring-2 focus:ring-blue-500/20 outline-none"
+                                                    disabled={!CATEGORIES.find(c => c.name === productForm.category)?.subCategories?.find(sc => sc.name === productForm.subCategory)?.subCategories}
                                                 >
-                                                    <option value="">Select Model (Optional)</option>
-                                                    {CATEGORIES.flatMap(c => c.subCategories || [])
-                                                        .find(sc => sc.name === productForm.category || sc.subCategories?.some(m => m.name === productForm.category))
-                                                        ?.subCategories?.map(model => (
-                                                            <option key={model.name} value={model.name}>{model.name}</option>
-                                                        ))}
+                                                    <option value="">Select Model</option>
+                                                    {CATEGORIES.find(c => c.name === productForm.category)?.subCategories?.find(sc => sc.name === productForm.subCategory)?.subCategories?.map(model => (
+                                                        <option key={model.name} value={model.name}>{model.name}</option>
+                                                    ))}
                                                 </select>
                                             </div>
                                         </div>

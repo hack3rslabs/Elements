@@ -123,10 +123,19 @@ export async function PUT(
       data.slug = await generateUniqueSlug(body.slug, id);
     }
 
-    if (body.categoryId !== undefined || body.categoryName !== undefined || body.category !== undefined) {
+    if (
+      body.categoryId !== undefined ||
+      body.categoryName !== undefined ||
+      body.category !== undefined ||
+      body.subCategory !== undefined ||
+      body.model !== undefined
+    ) {
       data.categoryId = await resolveCategoryId({
         categoryId: body.categoryId,
         categoryName: body.categoryName || body.category,
+        category: body.category,
+        subCategory: body.subCategory,
+        model: body.model,
       });
     }
 
