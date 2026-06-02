@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { 
   toProductDTO, 
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
   const stockStatus = searchParams.get('stockStatus');
   const sort = searchParams.get('sort') || 'featured';
   const page = searchParams.get('page') || '1';
-  const limit = searchParams.get('limit') || '12';
+  const limit = searchParams.get('limit') || '20';
   const bestSeller = searchParams.get('bestSeller');
   const newArrival = searchParams.get('newArrival');
   const minRating = searchParams.get('minRating');
@@ -109,18 +110,31 @@ export async function GET(request: NextRequest) {
     const facets = computeFacets(formatted);
 
     const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
-    const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 12));
+    const isLimitProvided = searchParams.has('limit');
     const total = formatted.length;
+    // If a category is requested and the client didn't explicitly provide a limit,
+    // return all matching items so category pages show the full set by default.
+    let limitNum;
+    if (isLimitProvided) {
+      limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 20));
+    } else if (category) {
+      limitNum = Math.max(1, total);
+    } else {
+      limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 20));
+    }
     const pages = Math.max(1, Math.ceil(total / limitNum));
     const start = (pageNum - 1) * limitNum;
     const paged = formatted.slice(start, start + limitNum);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: paged,
       facets,
       pagination: { total, page: pageNum, limit: limitNum, pages },
     });
+    // Cache for 5 minutes on Netlify CDN and browser
+    response.headers.set('Cache-Control', 'public, s-maxage=300, max-age=300');
+    return response;
 
   } catch (error) {
     const err = error as Error;
@@ -202,6 +216,9 @@ export async function POST(request: NextRequest) {
       where: { id: created.id },
       include: { category: { include: { parent: true } }, reviews: true },
     });
+
+    // Revalidate all pages to update ISR cache and product listings
+    revalidatePath('/', 'layout');
 
     return NextResponse.json({ success: true, message: 'Product created', data: full ? toProductDTO(full) : toProductDTO(created) }, { status: 201 });
   } catch (error) {

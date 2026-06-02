@@ -44,13 +44,16 @@ export async function GET(request: NextRequest) {
       take: 3
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: {
         products: products.map((p: unknown) => toProductDTO(p as BaseProduct)),
         categories: categories.map((c: any) => ({ name: c.name, slug: c.slug }))
       }
     });
+    // Cache for 5 minutes on Netlify CDN and browser
+    response.headers.set('Cache-Control', 'public, s-maxage=300, max-age=300');
+    return response;
   } catch (error) {
     console.error('[API] Search Error:', error);
     return NextResponse.json({ 

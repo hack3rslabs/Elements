@@ -1,13 +1,17 @@
-"use client";
-
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { MobileBottomNav } from "@/components/ui/mobile-nav";
-import { useState, useEffect } from "react";
 import { Branding } from "@/components/home/branding";
 import { CategorySection } from "@/components/home/category-section";
 import { RemainingContent } from "@/components/home/remaining-content";
 import { ProductShowcase } from "@/components/home/product-showcase";
+import { prisma } from "@/lib/prisma";
+import { toProductDTO } from "@/lib/api/helpers";
+
+// ISR: Revalidate every 1 hour (3600 seconds)
+// This pre-renders the homepage and regenerates it when cache expires
+// Significantly reduces Netlify function invocations
+export const revalidate = 3600;
 
 interface Product {
   id: string;
@@ -27,23 +31,23 @@ interface Product {
   tags?: string[];
 }
 
-export default function Home() {
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
+async function getInitialProducts(): Promise<Product[]> {
+  if (!prisma) return [];
+  try {
+    const products = await prisma.product.findMany({
+      take: 50,
+      include: { category: { include: { parent: true } }, reviews: true },
+      orderBy: { createdAt: 'desc' }
+    });
+    return products.map(toProductDTO);
+  } catch (e) {
+    console.error("Error fetching products:", e);
+    return [];
+  }
+}
 
-  useEffect(() => {
-    fetch("/api/products?limit=50")
-      .then(r => r.json())
-      .then(d => {
-        if (d.success) {
-          // Deduplicate products by ID to ensure a clean display
-          const uniqueProducts = Array.from(
-            new Map(d.data.map((p: Product) => [p.id, p])).values()
-          ) as Product[];
-          setAllProducts(uniqueProducts);
-        }
-      })
-      .catch(() => { });
-  }, []);
+export default async function Home() {
+  const allProducts = await getInitialProducts();
 
   return (
     <div className="flex min-h-screen flex-col">

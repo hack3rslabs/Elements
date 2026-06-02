@@ -23,7 +23,7 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
     const { addToCart, toggleWishlist, isInWishlist } = useStore();
    return (
-  <div className="group relative overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md  flex flex-col">
+  <div className="group relative overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md  flex flex-col sm:flex-col-2">
 
     {/* IMAGE */}
     <div className="aspect-square relative overflow-hidden bg-muted ">

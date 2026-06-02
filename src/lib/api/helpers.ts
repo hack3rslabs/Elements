@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { unstable_cache } from 'next/cache';
 import { CATEGORIES, type Category } from "@/constants/categories";
 
 export const DEFAULT_PRODUCT_IMAGE = '/images/products/kicjen sunk 1.webp';
@@ -164,7 +165,8 @@ export async function ensureCategoryHierarchy(input: CategoryHierarchyInput): Pr
     return currentId;
 }
 
-export async function getDescendantCategoryIds(categoryId: string): Promise<string[]> {
+// Internal implementation - cached version prevents N+1 queries
+async function _getDescendantCategoryIdsImpl(categoryId: string): Promise<string[]> {
     if (!prisma) throw new Error("Database not initialized");
 
     const category = await prisma.category.findUnique({
@@ -203,6 +205,14 @@ export async function getDescendantCategoryIds(categoryId: string): Promise<stri
 
     return Array.from(ids);
 }
+
+// Cached export: revalidate every 24 hours (86400 seconds)
+// Eliminates repeated N+1 category hierarchy queries
+export const getDescendantCategoryIds = unstable_cache(
+    _getDescendantCategoryIdsImpl,
+    ['category-descendants'],
+    { revalidate: 86400 }
+);
 
 export async function getCategoryAndDescendantIds(categoryId: string): Promise<string[]> {
     return [categoryId, ...(await getDescendantCategoryIds(categoryId))];

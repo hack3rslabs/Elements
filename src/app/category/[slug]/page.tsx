@@ -4,9 +4,15 @@ import { prisma } from "@/lib/prisma";
 import CategoryClient from "@/components/categories/CategoryClient";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
+import { Suspense } from "react";
 import { generatePageMetadata, generateBreadcrumbSchema } from "@/lib/seo";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { ensureCategoryHierarchy, getCategoryAndDescendantIds, toProductDTO } from "@/lib/api/helpers";
+import { ensureCategoryHierarchy, getCategoryAndDescendantIds, toProductDTO, computeFacets } from "@/lib/api/helpers";
+
+// ISR: Revalidate every 30 minutes (1800 seconds)
+// Pre-renders category pages and regenerates when cache expires
+// Eliminates expensive on-demand category page rendering
+export const revalidate = 1800;
 
 interface Props {
     params: Promise<{ slug: string }>;
@@ -35,29 +41,19 @@ async function getCategoryData(slug: string) {
 
         const categoryIds = await getCategoryAndDescendantIds(category.id);
 
-        // Fetch initial products for this category and every nested child category.
+        // Fetch all initial products for this category and every nested child category.
         const products = await prisma.product.findMany({
             where: { categoryId: { in: categoryIds } },
             include: { category: { include: { parent: true } }, reviews: true },
             orderBy: { createdAt: 'desc' },
-            take: 20
         });
 
-        // Simple facets generation for initial load
-        const facets = {
-            materials: [], // Could be fetched from a field if indexed
-            finishes: [],
-            priceRange: { min: 0, max: 100000 },
-            counts: { 
-                inStock: products.filter(p => p.stockStatus === "IN_STOCK").length, 
-                bestSellers: 0, 
-                newArrivals: products.length 
-            }
-        };
+        const productDTOs = products.map(toProductDTO);
+        const facets = computeFacets(productDTOs);
 
         return {
             category,
-            products: products.map(toProductDTO),
+            products: productDTOs,
             facets
         };
     } catch (e) {
@@ -80,6 +76,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     });
 }
 
+// Pre-render all categories at build time for instant page loads
+export async function generateStaticParams() {
+    if (!prisma) return [];
+    try {
+        const categories = await prisma.category.findMany({
+            select: { slug: true },
+            where: { parent: null } // Fetch root categories first
+        });
+        return categories.map(c => ({ slug: c.slug }));
+    } catch (e) {
+        console.error("Error generating static params for categories:", e);
+        return [];
+    }
+}
+
 export default async function CategoryPage({ params }: Props) {
     const { slug } = await params;
     const data = await getCategoryData(slug);
@@ -97,19 +108,21 @@ export default async function CategoryPage({ params }: Props) {
         <div className="flex min-h-screen flex-col">
             <JsonLd data={breadcrumbLd} />
             <Header />
-            <CategoryClient 
-                initialCategory={{
-                    id: data.category.id,
-                    name: data.category.name,
-                    slug: data.category.slug,
-                    description: data.category.description || undefined,
-                    image: data.category.image || undefined,
-                    children: data.category.children.map(c => ({ id: c.id, name: c.name, slug: c.slug }))
-                }}
-                initialProducts={data.products}
-                initialFacets={data.facets}
-                slug={slug}
-            />
+            <Suspense fallback={<div className="p-8">Loading...</div>}>
+                <CategoryClient 
+                    initialCategory={{
+                        id: data.category.id,
+                        name: data.category.name,
+                        slug: data.category.slug,
+                        description: data.category.description || undefined,
+                        image: data.category.image || undefined,
+                        children: data.category.children.map(c => ({ id: c.id, name: c.name, slug: c.slug }))
+                    }}
+                    initialProducts={data.products}
+                    initialFacets={data.facets}
+                    slug={slug}
+                />
+            </Suspense>
             <Footer />
         </div>
     );

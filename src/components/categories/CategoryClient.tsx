@@ -259,7 +259,7 @@ export default function CategoryClient({
 
                         {/* Results */}
                         {loading ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 items-stretch">
                                 {[...Array(6)].map((_, i) => (
                                     <div key={i} className="bg-white rounded-2xl border p-4 space-y-4 animate-pulse">
                                         <div className="aspect-square bg-gray-100 rounded-xl" />
@@ -274,7 +274,7 @@ export default function CategoryClient({
                                 <Button onClick={clearFilters} className="rounded-full bg-[#1877F2] mt-4">Reset All Filters</Button>
                             </div>
                         ) : (
-                            <div className={viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-6"}>
+                            <div className={viewMode === "grid" ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 items-stretch" : "space-y-6"}>
                                 <AnimatePresence mode="popLayout">
                                     {products.map((product) => (
                                         <motion.div
@@ -328,26 +328,26 @@ function GridProductCard({
 }) {
     const discount = product.mrp > product.price ? Math.round(((product.mrp - product.price) / product.mrp) * 100) : 0;
     return (
-        <div className="group relative flex flex-col h-full overflow-hidden rounded-[2rem] border bg-white shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer">
+        <div className="group relative flex flex-col h-full overflow-hidden rounded-2xl border bg-white shadow-sm hover:shadow-2xl hover:scale-[1.03] active:scale-[0.97] transition-all duration-500 cursor-pointer">
             <Link href={`/product/${product.slug}`} className="absolute inset-0 z-10" aria-label={`View ${product.name}`} />
             <div className="aspect-square relative shrink-0 overflow-hidden bg-gray-50">
-                <Image src={product.images?.[0] || '/images/products/kicjen sunk 1.webp'} alt={product.name} fill className="object-cover group-hover:scale-110 transition-transform duration-1000" />
-                {discount > 0 && <span className="absolute top-4 left-4 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg">-{discount}%</span>}
-                <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleWishlist(); }} className={`absolute top-4 right-4 z-20 h-10 w-10 rounded-full flex items-center justify-center shadow-lg transition-all ${inWishlist ? 'bg-red-500 text-white' : 'bg-white/90 text-gray-400'}`}>
-                    <Heart className={`h-5 w-5 ${inWishlist ? 'fill-current' : ''}`} />
+                <Image src={product.images?.[0] || '/images/products/kicjen sunk 1.webp'} alt={product.name} fill className="object-cover transition-transform duration-700 group-hover:scale-110" />
+                {discount > 0 && <span className="absolute top-3 left-3 bg-red-500 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-lg">-{discount}%</span>}
+                <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleWishlist(); }} className={`absolute top-3 right-3 z-20 h-9 w-9 rounded-full flex items-center justify-center shadow-lg transition-all pointer-events-auto ${inWishlist ? 'bg-red-500 text-white' : 'bg-white/90 text-gray-400'}`}>
+                    <Heart className={`h-4 w-4 ${inWishlist ? 'fill-current' : ''}`} />
                 </button>
             </div>
-            <div className="p-6 flex-1 flex flex-col">
-                <p className="text-[10px] text-[#1877F2] font-black uppercase tracking-widest mb-1">{product.categoryName}</p>
-                <h3 className="font-bold text-lg text-gray-900 leading-tight mb-4 line-clamp-2">
+            <div className="p-3 md:p-4 flex-1 flex flex-col relative z-20 pointer-events-none">
+                <p className="text-[10px] text-[#1877F2] font-black uppercase tracking-widest mb-0.5">{product.categoryName}</p>
+                <h3 className="font-bold text-sm md:text-base text-gray-900 leading-tight mb-3 line-clamp-2 pointer-events-none">
                     {product.name}
                 </h3>
-                <div className="mt-auto pt-6 border-t border-gray-50 flex items-center justify-between">
+                <div className="mt-auto pt-3 md:pt-6 border-t border-gray-50 flex items-center justify-between">
                     <div className="flex flex-col">
-                        <span className="text-2xl font-black text-gray-900">₹{product.price.toLocaleString("en-IN")}</span>
-                        {product.mrp > product.price && <span className="text-xs text-gray-400 line-through">₹{product.mrp.toLocaleString("en-IN")}</span>}
+                        <span className="text-lg md:text-2xl font-black text-gray-900">₹{product.price.toLocaleString("en-IN")}</span>
+                        {product.mrp > product.price && <span className="text-[10px] md:text-xs text-gray-400 line-through">₹{product.mrp.toLocaleString("en-IN")}</span>}
                     </div>
-                    <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddToCart(); }} disabled={product.stockStatus === "OUT_OF_STOCK"} className="relative z-20 bg-[#1877F2] rounded-2xl h-12 px-6 text-sm font-bold shadow-xl">Add to bag</Button>
+                    <Button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddToCart(); }} disabled={product.stockStatus === "OUT_OF_STOCK"} className="pointer-events-auto bg-[#1877F2] hover:bg-[#0d47a1] rounded-full h-8 md:h-12 px-3 md:px-6 text-[10px] md:text-sm font-bold shadow-xl">Add</Button>
                 </div>
             </div>
         </div>

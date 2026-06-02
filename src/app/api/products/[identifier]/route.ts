@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { 
   toProductDTO, 
@@ -55,7 +56,10 @@ export async function GET(
     const reviews = Array.isArray(product.reviews) ? product.reviews.map(toReviewDTO) : [];
     const relatedProducts = related.map(toProductDTO);
 
-    return NextResponse.json({ success: true, data: { ...formatted, reviews, relatedProducts } });
+    const response = NextResponse.json({ success: true, data: { ...formatted, reviews, relatedProducts } });
+    // Cache for 1 hour on Netlify CDN and browser
+    response.headers.set('Cache-Control', 'public, s-maxage=3600, max-age=3600');
+    return response;
   } catch (error) {
     const err = error as Error;
     console.error('[API] Product Detail Error:', err);
@@ -145,6 +149,10 @@ export async function PUT(
       where: { id },
       include: { category: { include: { parent: true } }, reviews: true },
     });
+    
+    // Revalidate all pages to update ISR cache with new product data
+    revalidatePath('/', 'layout');
+    
     return NextResponse.json({ success: true, message: 'Product updated', data: full ? toProductDTO(full) : null });
   } catch (error) {
     const err = error as Error;
@@ -174,6 +182,10 @@ export async function DELETE(
 
   try {
     await prisma.product.delete({ where: { id } });
+    
+    // Revalidate all pages to update product listings
+    revalidatePath('/', 'layout');
+    
     return NextResponse.json({ success: true, message: 'Product deleted' });
   } catch (error) {
     const err = error as Error;

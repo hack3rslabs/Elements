@@ -8,6 +8,10 @@ import { Metadata } from "next";
 import { generatePageMetadata, generateProductSchema, generateBreadcrumbSchema } from "@/lib/seo";
 import { JsonLd } from "@/components/seo/JsonLd";
 
+// ISR: Revalidate every 1 hour (3600 seconds)
+// Pre-renders product pages to eliminate on-demand function calls
+export const revalidate = 3600;
+
 interface Props {
     params: Promise<{ slug: string }>;
 }
@@ -59,6 +63,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         url: `/product/${slug}`,
         type: "website",
     });
+}
+
+// Pre-render top 100 products at build time for instant page loads
+export async function generateStaticParams() {
+    if (!prisma) return [];
+    try {
+        const products = await prisma.product.findMany({
+            select: { slug: true },
+            take: 100,
+            orderBy: { createdAt: 'desc' }
+        });
+        return products.map(p => ({ slug: p.slug }));
+    } catch (e) {
+        console.error("Error generating static params for products:", e);
+        return [];
+    }
 }
 
 export default async function ProductPage({ params }: Props) {

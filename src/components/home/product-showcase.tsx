@@ -177,23 +177,39 @@ function ProductCard({ product, onAddToCart, onToggleWishlist, isWishlisted }: {
             </div>
           ) : <div className="mb-1.5 min-h-[16px]" />}
           
-          <div className="flex items-center justify-between mt-2 pointer-events-auto">
-            <div>
-              <span className="text-sm md:text-lg font-bold text-[#1C1C1E]">₹{product.price.toLocaleString("en-IN")}</span>
-              {product.mrp > product.price && (
-                <span className="text-[10px] md:text-xs text-muted-foreground line-through ml-1">₹{product.mrp.toLocaleString("en-IN")}</span>
-              )}
-            </div>
-            <Button size="sm" onClick={(e) => { e.preventDefault(); onAddToCart(); }} className="bg-[#1877F2] hover:bg-[#0d47a1] rounded-full h-7 md:h-9 px-2.5 md:px-4 text-[10px] md:text-xs font-semibold shadow-md cursor-pointer">
-              <ShoppingCart className="h-3 w-3 mr-1" /> Add
-            </Button>
-          </div>
+          <div className="mt-2 pointer-events-auto">
+  {/* Price */}
+  <div className="mb-1">
+    <span className="text-sm md:text-lg font-bold text-[#1C1C1E]">
+      ₹{product.price.toLocaleString("en-IN")}
+    </span>
+
+    {product.mrp > product.price && (
+      <span className="text-[10px] md:text-xs text-muted-foreground line-through ml-1">
+        ₹{product.mrp.toLocaleString("en-IN")}
+      </span>
+    )}
+  </div>
+
+  {/* Add to Cart Button */}
+  <Button
+    size="sm"
+    onClick={(e) => {
+      e.preventDefault();
+      onAddToCart();
+    }}
+    className="w-full bg-[#1877F2] hover:bg-[#0d47a1] rounded-full h-8 md:h-9 text-[10px] md:text-xs font-semibold shadow-md cursor-pointer"
+  >
+    <ShoppingCart className="h-3 w-3 mr-1" />
+    Add to Cart
+  </Button>
+</div>
           {/* Contact shortcut on mobile */}
           <a
             href={`https://wa.me/919496664445?text=${encodeURIComponent(`Hi! I need details about: ${product.name}`)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 flex items-center justify-center gap-1.5 text-[10px] md:text-xs text-green-700 bg-green-50 rounded-full py-1.5 font-medium hover:bg-green-100 transition-colors pointer-events-auto cursor-pointer"
+            className="mt-1 flex items-center justify-center gap-1 text-[10px] md:text-xs text-green-700 bg-green-50 rounded-full py-1 font-medium hover:bg-green-100 transition-colors pointer-events-auto cursor-pointer"
           >
             <MessageCircle className="h-3 w-3" /> WhatsApp for Details
           </a>

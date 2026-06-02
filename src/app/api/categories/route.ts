@@ -29,7 +29,10 @@ export async function GET() {
       children: cat.children
     }));
 
-    return NextResponse.json({ success: true, data: formattedCategories });
+    const response = NextResponse.json({ success: true, data: formattedCategories });
+    // Cache for 1 hour on Netlify CDN and browser (static data)
+    response.headers.set('Cache-Control', 'public, s-maxage=3600, max-age=3600');
+    return response;
   } catch (error: unknown) {
     console.error('[API] Categories Fetch Error:', error);
     return NextResponse.json({ 
