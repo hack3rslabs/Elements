@@ -8,9 +8,12 @@ import { Metadata } from "next";
 import { generatePageMetadata, generateProductSchema, generateBreadcrumbSchema } from "@/lib/seo";
 import { JsonLd } from "@/components/seo/JsonLd";
 
-// ISR: Revalidate every 1 hour (3600 seconds)
+// ISR: Revalidate every 24 hours (86400 seconds)
 // Pre-renders product pages to eliminate on-demand function calls
-export const revalidate = 3600;
+export const revalidate = 86400;
+
+// Allow rendering pages that weren't pre-rendered at build time
+export const dynamicParams = true;
 
 interface Props {
     params: Promise<{ slug: string }>;
@@ -20,7 +23,8 @@ async function getProductData(slug: string) {
     if (!prisma) return null;
 
     try {
-        const product = await prisma.product.findUnique({
+        // Try finding by slug first
+        let product = await prisma.product.findUnique({
             where: { slug: slug },
             include: {
                 category: { include: { parent: true } },
@@ -30,6 +34,20 @@ async function getProductData(slug: string) {
                 }
             }
         });
+
+        // Fallback: Check if the slug is actually an ID (useful for stale links)
+        if (!product && slug.length > 10) { 
+            product = await prisma.product.findUnique({
+                where: { id: slug },
+                include: {
+                    category: { include: { parent: true } },
+                    reviews: {
+                        include: { user: { select: { name: true, image: true } } },
+                        orderBy: { createdAt: 'desc' }
+                    }
+                }
+            });
+        }
 
         if (!product) return null;
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { 
   toProductDTO, 
@@ -57,7 +57,8 @@ export async function GET(
     const relatedProducts = related.map(toProductDTO);
 
     const response = NextResponse.json({ success: true, data: { ...formatted, reviews, relatedProducts } });
-    // Cache for 1 hour on Netlify CDN and browser
+    // Cache for 1 hour on CDN and browser
+    // Since we now have manual revalidation triggers, we can cache longer safely
     response.headers.set('Cache-Control', 'public, s-maxage=3600, max-age=3600');
     return response;
   } catch (error) {
@@ -150,8 +151,11 @@ export async function PUT(
       include: { category: { include: { parent: true } }, reviews: true },
     });
     
-    // Revalidate all pages to update ISR cache with new product data
-    revalidatePath('/', 'layout');
+    // Targeted revalidation to save Netlify credits
+    revalidatePath('/', 'page');
+    revalidatePath(`/product/${full?.slug || id}`, 'page');
+    if (full?.category?.slug) revalidatePath(`/category/${full.category.slug}`, 'page');
+    revalidateTag('category-descendants', 'default');
     
     return NextResponse.json({ success: true, message: 'Product updated', data: full ? toProductDTO(full) : null });
   } catch (error) {
@@ -183,8 +187,9 @@ export async function DELETE(
   try {
     await prisma.product.delete({ where: { id } });
     
-    // Revalidate all pages to update product listings
-    revalidatePath('/', 'layout');
+    // Targeted revalidation
+    revalidatePath('/', 'page');
+    revalidateTag('category-descendants', 'default');
     
     return NextResponse.json({ success: true, message: 'Product deleted' });
   } catch (error) {

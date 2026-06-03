@@ -206,12 +206,15 @@ async function _getDescendantCategoryIdsImpl(categoryId: string): Promise<string
     return Array.from(ids);
 }
 
-// Cached export: revalidate every 24 hours (86400 seconds)
-// Eliminates repeated N+1 category hierarchy queries
+// Cached export: revalidate manually via 'category-descendants' tag
+// Lower default revalidation to 1 hour as a safety fallback
 export const getDescendantCategoryIds = unstable_cache(
     _getDescendantCategoryIdsImpl,
     ['category-descendants'],
-    { revalidate: 86400 }
+    { 
+        revalidate: 3600,
+        tags: ['category-descendants']
+    }
 );
 
 export async function getCategoryAndDescendantIds(categoryId: string): Promise<string[]> {

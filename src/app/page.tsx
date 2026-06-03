@@ -8,10 +8,8 @@ import { ProductShowcase } from "@/components/home/product-showcase";
 import { prisma } from "@/lib/prisma";
 import { toProductDTO } from "@/lib/api/helpers";
 
-// ISR: Revalidate every 1 hour (3600 seconds)
-// This pre-renders the homepage and regenerates it when cache expires
-// Significantly reduces Netlify function invocations
-export const revalidate = 3600;
+// ISR: Revalidate every 24 hours (86400 seconds)
+export const revalidate = 86400;
 
 interface Product {
   id: string;
@@ -35,7 +33,7 @@ async function getInitialProducts(): Promise<Product[]> {
   if (!prisma) return [];
   try {
     const products = await prisma.product.findMany({
-      take: 50,
+      take: 200,
       include: { category: { include: { parent: true } }, reviews: true },
       orderBy: { createdAt: 'desc' }
     });

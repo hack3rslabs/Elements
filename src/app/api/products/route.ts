@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { 
   toProductDTO, 
@@ -115,12 +115,18 @@ export async function GET(request: NextRequest) {
     // If a category is requested and the client didn't explicitly provide a limit,
     // return all matching items so category pages show the full set by default.
     let limitNum;
-    if (isLimitProvided) {
-      limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 20));
-    } else if (category) {
+    if (category && !isLimitProvided) {
+      // For category pages, default to showing everything
       limitNum = Math.max(1, total);
     } else {
-      limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 20));
+      // Otherwise respect limit, but with a larger cap for category-filtered results
+      const maxCap = category ? 1000 : 100;
+      limitNum = Math.min(maxCap, Math.max(1, parseInt(String(limit), 10) || 20));
+      
+      // If category is provided but limit was some invalid value, fallback to total
+      if (category && isNaN(parseInt(String(limit), 10))) {
+        limitNum = Math.max(1, total);
+      }
     }
     const pages = Math.max(1, Math.ceil(total / limitNum));
     const start = (pageNum - 1) * limitNum;
@@ -217,8 +223,10 @@ export async function POST(request: NextRequest) {
       include: { category: { include: { parent: true } }, reviews: true },
     });
 
-    // Revalidate all pages to update ISR cache and product listings
-    revalidatePath('/', 'layout');
+    // Targeted revalidation
+    revalidatePath('/', 'page');
+    if (full?.category?.slug) revalidatePath(`/category/${full.category.slug}`, 'page');
+    revalidateTag('category-descendants', 'default');
 
     return NextResponse.json({ success: true, message: 'Product created', data: full ? toProductDTO(full) : toProductDTO(created) }, { status: 201 });
   } catch (error) {
