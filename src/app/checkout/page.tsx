@@ -174,8 +174,8 @@ export default function CheckoutPage() {
                     }
                 };
 
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const paymentObject = new (window as any).Razorpay(options);
+
+                const paymentObject = new (window as unknown as { Razorpay: new (options: unknown) => { open: () => void } }).Razorpay(options);
                 paymentObject.open();
             } else {
                 // COD Flow

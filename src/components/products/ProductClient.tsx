@@ -6,7 +6,7 @@ import { MobileBottomNav } from "@/components/ui/mobile-nav";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { Star, Heart, ShoppingCart, Truck, ShieldCheck, RotateCcw, Minus, Plus, Check, Phone, MessageCircle, MapPin, Users, Package, ChevronRight, Download, PlayCircle, Info, Award, Calendar, Ruler, Palette, Weight } from "lucide-react";
+import { Star, Heart, ShoppingCart, ShieldCheck, RotateCcw, Minus, Plus, Check, Phone, MessageCircle, Users, Package, ChevronRight, Info, Ruler, Palette, Weight } from "lucide-react";
 import { WhatsAppButton } from "@/components/ui/whatsapp-button";
 
 interface ProductVariant {
@@ -53,15 +53,7 @@ interface ProductDetail {
     variants?: ProductVariant[];
 }
 
-const SPEC_ICONS: Record<string, typeof Ruler> = {
-    material: Palette,
-    finish: Palette,
-    dimensions: Ruler,
-    size: Ruler,
-    weight: Weight,
-    warranty: ShieldCheck,
-    thickness: Ruler,
-};
+
 
 export default function ProductClient({ product }: { product: ProductDetail }) {
     const { addToCart, toggleWishlist, isInWishlist } = useStore();

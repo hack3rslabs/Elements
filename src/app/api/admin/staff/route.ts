@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
-    const formatted = staff.map((s: any) => ({
+    const formatted = staff.map((s) => ({
       id: s.id,
       name: s.name || 'Unknown',
       email: s.email || '',

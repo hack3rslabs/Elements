@@ -69,12 +69,11 @@ export function AnalyticsHead() {
     );
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 declare global {
     interface Window {
-        gtag?: (...args: any[]) => void;
-        fbq?: (...args: any[]) => void;
-        dataLayer?: any[];
+        gtag?: (...args: unknown[]) => void;
+        fbq?: (...args: unknown[]) => void;
+        dataLayer?: unknown[];
     }
 }
 

@@ -159,7 +159,7 @@ export default function CategoryClient({
         } else {
             setMounted(true);
         }
-    }, [filters, fetchProducts, mounted]);
+    }, [filters, fetchProducts]); // Removed 'mounted' to fix cascading render warning
 
     return (
         <main className="flex-1 bg-gray-50 pb-20">

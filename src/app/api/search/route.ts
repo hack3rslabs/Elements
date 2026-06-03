@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         products: products.map((p: unknown) => toProductDTO(p as BaseProduct)),
-        categories: categories.map((c: any) => ({ name: c.name, slug: c.slug }))
+        categories: categories.map((c) => ({ name: c.name, slug: c.slug }))
       }
     });
     // Cache for 5 minutes on Netlify CDN and browser

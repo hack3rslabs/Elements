@@ -38,6 +38,14 @@ async function getCategoryData(slug: string) {
             }
         }
 
+        // Final fallback: Look up by ID directly
+        if (!category && slug.length > 10) {
+            category = await prisma.category.findUnique({
+                where: { id: slug },
+                include: { children: true, parent: true }
+            });
+        }
+
         if (!category) return null;
 
         const categoryIds = await getCategoryAndDescendantIds(category.id);
@@ -77,20 +85,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     });
 }
 
-// Pre-render all categories at build time for instant page loads
-export async function generateStaticParams() {
-    if (!prisma) return [];
-    try {
-        const categories = await prisma.category.findMany({
-            select: { slug: true },
-            where: { parent: null } // Fetch root categories first
-        });
-        return categories.map(c => ({ slug: c.slug }));
-    } catch (e) {
-        console.error("Error generating static params for categories:", e);
-        return [];
-    }
-}
+
 
 export default async function CategoryPage({ params }: Props) {
     const { slug } = await params;

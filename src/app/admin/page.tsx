@@ -232,7 +232,7 @@ export default function AdminPage() {
 
     const handleAddProduct = async () => {
         // Use the deepest selected category/model
-        let categoryName = productForm.model || productForm.subCategory || productForm.category;
+        const categoryName = productForm.model || productForm.subCategory || productForm.category;
         try {
             const res = await fetch(`${API}/api/products`, {
                 method: 'POST', headers: HEADERS,

@@ -17,7 +17,7 @@ export async function GET() {
       }
     });
 
-    const formattedCategories = categories.map((cat: any) => ({
+    const formattedCategories = categories.map((cat) => ({
       id: cat.id,
       name: cat.name,
       slug: cat.slug,

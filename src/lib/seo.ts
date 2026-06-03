@@ -47,7 +47,7 @@ export function generatePageMetadata({
     };
 }
 
-export function generateProductSchema(product: any) {
+export function generateProductSchema(product: Record<string, any>) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://hindustanelements.com";
     
     return {

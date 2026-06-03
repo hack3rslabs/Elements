@@ -1,7 +1,7 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
+
 import bcrypt from "bcryptjs";
 
 // Removed redundant PrismaAdapter to prevent CredentialsProvider AccessDenied conflict

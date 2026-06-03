@@ -83,21 +83,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     });
 }
 
-// Pre-render top 100 products at build time for instant page loads
-export async function generateStaticParams() {
-    if (!prisma) return [];
-    try {
-        const products = await prisma.product.findMany({
-            select: { slug: true },
-            take: 100,
-            orderBy: { createdAt: 'desc' }
-        });
-        return products.map(p => ({ slug: p.slug }));
-    } catch (e) {
-        console.error("Error generating static params for products:", e);
-        return [];
-    }
-}
+
 
 export default async function ProductPage({ params }: Props) {
     const { slug } = await params;
