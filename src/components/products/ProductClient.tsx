@@ -6,7 +6,7 @@ import { MobileBottomNav } from "@/components/ui/mobile-nav";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { Star, Heart, ShoppingCart, ShieldCheck, RotateCcw, Minus, Plus, Check, Phone, MessageCircle, Users, Package, ChevronRight, Info, Ruler, Palette, Weight } from "lucide-react";
+import { Star, Heart, ShoppingCart, ShieldCheck, RotateCcw, Minus, Plus, Check, Phone, MessageCircle, Users, Package, ChevronRight, Info } from "lucide-react";
 import { WhatsAppButton } from "@/components/ui/whatsapp-button";
 
 interface ProductVariant {

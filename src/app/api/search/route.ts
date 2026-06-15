@@ -51,8 +51,8 @@ export async function GET(request: NextRequest) {
         categories: categories.map((c) => ({ name: c.name, slug: c.slug }))
       }
     });
-    // Cache for 5 minutes on Netlify CDN and browser
-    response.headers.set('Cache-Control', 'public, s-maxage=300, max-age=300');
+    // No caching - always fresh data
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     return response;
   } catch (error) {
     console.error('[API] Search Error:', error);

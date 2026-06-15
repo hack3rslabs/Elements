@@ -8,8 +8,8 @@ import { ProductShowcase } from "@/components/home/product-showcase";
 import { prisma } from "@/lib/prisma";
 import { toProductDTO } from "@/lib/api/helpers";
 
-// ISR: Revalidate every 24 hours (86400 seconds)
-export const revalidate = 86400;
+// Always fetch fresh data - no caching
+export const dynamic = 'force-dynamic';
 
 interface Product {
   id: string;

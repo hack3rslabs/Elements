@@ -9,11 +9,8 @@ import { generatePageMetadata, generateBreadcrumbSchema } from "@/lib/seo";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { ensureCategoryHierarchy, getCategoryAndDescendantIds, toProductDTO, computeFacets } from "@/lib/api/helpers";
 
-// ISR: Revalidate every 24 hours (86400 seconds)
-export const revalidate = 86400;
-
-// Allow rendering pages that weren't pre-rendered at build time (e.g. subcategories)
-export const dynamicParams = true;
+// Always fetch fresh data - no caching
+export const dynamic = 'force-dynamic';
 
 interface Props {
     params: Promise<{ slug: string }>;

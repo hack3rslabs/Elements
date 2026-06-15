@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { unstable_cache } from 'next/cache';
 import { CATEGORIES, type Category } from "@/constants/categories";
 
 export const DEFAULT_PRODUCT_IMAGE = '/images/products/kicjen sunk 1.webp';
@@ -206,16 +205,8 @@ async function _getDescendantCategoryIdsImpl(categoryId: string): Promise<string
     return Array.from(ids);
 }
 
-// Cached export: revalidate manually via 'category-descendants' tag
-// Lower default revalidation to 1 hour as a safety fallback
-export const getDescendantCategoryIds = unstable_cache(
-    _getDescendantCategoryIdsImpl,
-    ['category-descendants'],
-    { 
-        revalidate: 3600,
-        tags: ['category-descendants']
-    }
-);
+// Direct export without caching
+export const getDescendantCategoryIds = _getDescendantCategoryIdsImpl;
 
 export async function getCategoryAndDescendantIds(categoryId: string): Promise<string[]> {
     return [categoryId, ...(await getDescendantCategoryIds(categoryId))];

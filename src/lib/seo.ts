@@ -47,7 +47,20 @@ export function generatePageMetadata({
     };
 }
 
-export function generateProductSchema(product: Record<string, any>) {
+interface ProductData {
+    name: string;
+    images?: string[];
+    description?: string;
+    shortDescription?: string;
+    sku: string;
+    slug: string;
+    price: number;
+    stockStatus: string;
+    rating: number;
+    reviewCount?: number;
+}
+
+export function generateProductSchema(product: ProductData) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://hindustanelements.com";
     
     return {

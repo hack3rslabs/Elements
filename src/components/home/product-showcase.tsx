@@ -130,11 +130,6 @@ function ProductCard({ product, onAddToCart, onToggleWishlist, isWishlisted }: {
       <div className="aspect-square relative shrink-0 overflow-hidden bg-gray-50">
         
         <Image src={imageUrl} alt={product.name} fill className="object-cover transition-transform duration-700 group-hover:scale-110" />
-        {discount > 0 && (
-          <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] md:text-xs font-bold px-2 py-0.5 md:px-2.5 md:py-1 rounded-full shadow-md z-20">
-            {discount}% OFF
-          </span>
-        )}
         {product.isBestSeller && (
           <span className="absolute top-2 right-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] md:text-xs font-bold px-2 py-0.5 rounded-full shadow-md z-20">
             ⭐ BEST
@@ -167,7 +162,6 @@ function ProductCard({ product, onAddToCart, onToggleWishlist, isWishlisted }: {
         <h3 className="font-medium text-xs md:text-sm leading-tight mb-1.5">
           <span className="hover:text-[#1877F2] transition-colors">{product.name}</span>
         </h3>
-        
         <div className="mt-auto">
           {product.rating > 0 ? (
             <div className="flex items-center gap-1 mb-1.5 min-h-[16px]">
@@ -175,14 +169,19 @@ function ProductCard({ product, onAddToCart, onToggleWishlist, isWishlisted }: {
               <span className="text-[10px] md:text-xs font-medium">{product.rating}</span>
               <span className="text-[10px] text-muted-foreground">({product.reviewCount})</span>
             </div>
-          ) : <div className="mb-1.5 min-h-[16px]" />}
+          ) : <div className="mb-1 min-h-[16px]" />}
           
-          <div className="mt-2 pointer-events-auto">
+          <div className="mt-1 pointer-events-auto">
+
+            <span className=" top-2 left-2 bg-red-500 text-white text-[10px] md:text-xs font-bold px-2 py-0.5 md:px-2.5 md:py-1 rounded-full shadow-md z-20">
+            {discount}% OFF
+             </span>
   {/* Price */}
   <div className="mb-1">
     <span className="text-sm md:text-lg font-bold text-[#1C1C1E]">
       ₹{product.price.toLocaleString("en-IN")}
     </span>
+    
 
     {product.mrp > product.price && (
       <span className="text-[10px] md:text-xs text-muted-foreground line-through ml-1">
@@ -190,6 +189,7 @@ function ProductCard({ product, onAddToCart, onToggleWishlist, isWishlisted }: {
       </span>
     )}
   </div>
+  
 
   {/* Add to Cart Button */}
   <Button
@@ -204,6 +204,7 @@ function ProductCard({ product, onAddToCart, onToggleWishlist, isWishlisted }: {
     Add to Cart
   </Button>
 </div>
+
           {/* Contact shortcut on mobile */}
           <a
             href={`https://wa.me/919496664445?text=${encodeURIComponent(`Hi! I need details about: ${product.name}`)}`}

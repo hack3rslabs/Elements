@@ -15,8 +15,8 @@ export async function GET() {
       orderBy: { order: 'asc' },
     });
     const response = NextResponse.json({ success: true, data: slides });
-    // Cache for 1 hour on Netlify CDN and browser (static carousel content)
-    response.headers.set('Cache-Control', 'public, s-maxage=3600, max-age=3600');
+    // No caching - always fresh data
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     return response;
   } catch (error: unknown) {
     return NextResponse.json({ success: false, message: (error as Error).message }, { status: 500 });

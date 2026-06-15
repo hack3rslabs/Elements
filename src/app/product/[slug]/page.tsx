@@ -3,17 +3,13 @@ import { Footer } from "@/components/layout/footer";
 import { prisma } from "@/lib/prisma";
 import { toProductDTO, toReviewDTO } from "@/lib/api/helpers";
 import ProductClient from "@/components/products/ProductClient";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Metadata } from "next";
 import { generatePageMetadata, generateProductSchema, generateBreadcrumbSchema } from "@/lib/seo";
 import { JsonLd } from "@/components/seo/JsonLd";
 
-// ISR: Revalidate every 24 hours (86400 seconds)
-// Pre-renders product pages to eliminate on-demand function calls
-export const revalidate = 86400;
-
-// Allow rendering pages that weren't pre-rendered at build time
-export const dynamicParams = true;
+// Always fetch fresh data - no caching
+export const dynamic = 'force-dynamic';
 
 interface Props {
     params: Promise<{ slug: string }>;
@@ -22,31 +18,56 @@ interface Props {
 async function getProductData(slug: string) {
     if (!prisma) return null;
 
+    const productInclude = {
+        category: { include: { parent: true } },
+        reviews: {
+            include: { user: { select: { name: true, image: true } } },
+            orderBy: { createdAt: 'desc' as const }
+        }
+    };
+
     try {
-        // Try finding by slug first
+        // 1. Exact slug match
         let product = await prisma.product.findUnique({
-            where: { slug: slug },
-            include: {
-                category: { include: { parent: true } },
-                reviews: {
-                    include: { user: { select: { name: true, image: true } } },
-                    orderBy: { createdAt: 'desc' }
-                }
-            }
+            where: { slug },
+            include: productInclude,
         });
 
-        // Fallback: Check if the slug is actually an ID (useful for stale links)
-        if (!product && slug.length > 10) { 
+        // 2. Fallback: slug is actually an ID (useful for stale links)
+        if (!product && slug.length > 10) {
             product = await prisma.product.findUnique({
                 where: { id: slug },
-                include: {
-                    category: { include: { parent: true } },
-                    reviews: {
-                        include: { user: { select: { name: true, image: true } } },
-                        orderBy: { createdAt: 'desc' }
-                    }
-                }
+                include: productInclude,
             });
+        }
+
+        // 3. Fallback: case-insensitive partial slug match (handles special chars / encoding issues)
+        if (!product) {
+            product = await prisma.product.findFirst({
+                where: { slug: { contains: slug, mode: 'insensitive' } },
+                include: productInclude,
+                orderBy: { createdAt: 'desc' },
+            });
+        }
+
+        // 4. Fallback: match by product name slugified (handles renamed products)
+        if (!product) {
+            const allProducts = await prisma.product.findMany({
+                select: { id: true, slug: true, name: true },
+            });
+            const decodedSlug = decodeURIComponent(slug).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            const match = allProducts.find(p => {
+                const pSlug = (p.slug || '').toLowerCase();
+                const pNameSlug = (p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                return pSlug === decodedSlug || pNameSlug === decodedSlug ||
+                    pSlug.includes(decodedSlug) || decodedSlug.includes(pSlug);
+            });
+            if (match) {
+                product = await prisma.product.findUnique({
+                    where: { id: match.id },
+                    include: productInclude,
+                });
+            }
         }
 
         if (!product) return null;
@@ -91,6 +112,11 @@ export default async function ProductPage({ params }: Props) {
 
     if (!product) {
         notFound();
+    }
+
+    // If the product was found via a fallback (stale/wrong slug), redirect to canonical URL
+    if (product.slug && product.slug !== slug) {
+        redirect(`/product/${product.slug}`);
     }
 
     const jsonLd = generateProductSchema(product);

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidatePath, revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { 
   toProductDTO, 
@@ -138,8 +137,8 @@ export async function GET(request: NextRequest) {
       facets,
       pagination: { total, page: pageNum, limit: limitNum, pages },
     });
-    // Cache for 5 minutes on Netlify CDN and browser
-    response.headers.set('Cache-Control', 'public, s-maxage=300, max-age=300');
+    // No caching - always fresh data
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     return response;
 
   } catch (error) {
@@ -223,10 +222,7 @@ export async function POST(request: NextRequest) {
       include: { category: { include: { parent: true } }, reviews: true },
     });
 
-    // Targeted revalidation
-    revalidatePath('/', 'page');
-    if (full?.category?.slug) revalidatePath(`/category/${full.category.slug}`, 'page');
-    revalidateTag('category-descendants', 'default');
+
 
     return NextResponse.json({ success: true, message: 'Product created', data: full ? toProductDTO(full) : toProductDTO(created) }, { status: 201 });
   } catch (error) {

@@ -5,7 +5,7 @@ import { useStore } from "@/lib/store";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Grid3X3, LayoutList, Heart, Filter, X, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ScrollReveal } from "@/components/ui/scroll-reveal";
@@ -125,7 +125,8 @@ export default function CategoryClient({
     const fetchProducts = useCallback(() => {
         // Skip fetch on initial load if filters match initial state (roughly)
         // But for simplicity, we'll fetch when filters change
-        setLoading(true);
+        // Defer setLoading to avoid cascading render lint error
+        Promise.resolve().then(() => setLoading(true));
         const query = new URLSearchParams();
         query.set("category", slug);
         query.set("sort", filters.sort);
@@ -152,14 +153,14 @@ export default function CategoryClient({
     }, [slug, filters]);
 
     // Only run this when filters actually change after initial mount
-    const [mounted, setMounted] = useState(false);
+    const isMounted = useRef(false);
     useEffect(() => {
-        if (mounted) {
+        if (isMounted.current) {
             fetchProducts();
         } else {
-            setMounted(true);
+            isMounted.current = true;
         }
-    }, [filters, fetchProducts]); // Removed 'mounted' to fix cascading render warning
+    }, [filters, fetchProducts]); 
 
     return (
         <main className="flex-1 bg-gray-50 pb-20">
@@ -167,7 +168,7 @@ export default function CategoryClient({
             <section className="relative bg-gradient-to-r from-[#0d47a1] to-[#1877F2] py-5 overflow-hidden">
                 <div className="absolute inset-0 bg-[url('/images/products/k%20s%202.jpg')] bg-cover bg-center opacity-10"></div>
                 <div className="container relative z-10 text-white">
-                    <nav className="flex items-center gap-2 text-sm text-white/60 mb-6 animate-fade-up">
+                    <nav className="flex items-center gap-2 text- msm text-white/60 mb-6 animate-fade-up">
                         <Link href="/" className="hover:text-white transition-colors hover-underline">Home</Link>
                         <span>/</span>
                         <span className="text-white font-medium">{initialCategory?.name || slug}</span>
@@ -329,7 +330,7 @@ function GridProductCard({
     const discount = product.mrp > product.price ? Math.round(((product.mrp - product.price) / product.mrp) * 100) : 0;
     return (
         <div className="group relative flex flex-col h-full overflow-hidden rounded-2xl border bg-white shadow-sm hover:shadow-2xl hover:scale-[1.03] active:scale-[0.97] transition-all duration-500 cursor-pointer">
-            <Link href={`/product/${product.slug}`} className="absolute inset-0 z-10" aria-label={`View ${product.name}`} />
+            <Link href={`/product/${product.slug || product.id}`} className="absolute inset-0 z-10" aria-label={`View ${product.name}`} />
             <div className="aspect-square relative shrink-0 overflow-hidden bg-gray-50">
                 <Image src={product.images?.[0] || '/images/products/kicjen sunk 1.webp'} alt={product.name} fill className="object-cover transition-transform duration-700 group-hover:scale-110" />
                 {discount > 0 && <span className="absolute top-3 left-3 bg-red-500 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-lg">-{discount}%</span>}

@@ -30,8 +30,8 @@ export async function GET() {
     }));
 
     const response = NextResponse.json({ success: true, data: formattedCategories });
-    // Cache for 1 hour on Netlify CDN and browser (static data)
-    response.headers.set('Cache-Control', 'public, s-maxage=3600, max-age=3600');
+    // No caching - always fresh data
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     return response;
   } catch (error: unknown) {
     console.error('[API] Categories Fetch Error:', error);

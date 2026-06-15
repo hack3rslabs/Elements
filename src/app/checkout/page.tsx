@@ -136,7 +136,7 @@ export default function CheckoutPage() {
                     key: data.keyId,
                     amount: data.amount,
                     currency: data.currency,
-                    name: "Hindustan Elements",
+                    name: "Hindusthan Elements",
                     description: "Order Payment",
                     order_id: data.razorpayOrderId,
                     handler: async function (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) {
